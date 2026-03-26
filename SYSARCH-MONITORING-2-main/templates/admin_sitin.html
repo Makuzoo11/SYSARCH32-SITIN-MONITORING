@@ -1,0 +1,57 @@
+{% extends "admin_base.html" %}
+{% block title %}Sit-in Records – CCS Admin{% endblock %}
+{% block content %}
+<div class="page-card">
+  <h1 class="page-title">Current Sit in</h1>
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <button class="btn-add" onclick="openModal('sitin-modal')">+ New Sit-in</button>
+    </div>
+  </div>
+  <table class="data-table" id="sitin-table">
+    <thead>
+      <tr><th>Sit ID ↕</th><th>ID Number ↕</th><th>Name ↕</th><th>Purpose ↕</th><th>Sit Lab ↕</th><th>Session ↕</th><th>Status ↕</th><th>Actions ↕</th></tr>
+    </thead>
+    <tbody>
+      {% for log in logs %}
+      <tr>
+        <td>{{ log.id }}</td>
+        <td>{{ log.id_number }}</td>
+        <td>{{ log.first_name }} {{ log.last_name }}</td>
+        <td>{{ log.purpose or '—' }}</td>
+        <td>{{ log.lab_room or '—' }}</td>
+        <td>{{ log.sessions_remaining }}</td>
+        <td>{% if log.status=='Active' %}<span class="status-active">Active</span>{% else %}<span class="status-done">Done</span>{% endif %}</td>
+        <td class="action-btns">
+          {% if log.status=='Active' %}
+          <form method="post" action="{{ url_for('admin_sitin_signout', lid=log.id) }}" style="display:inline">
+            <button type="submit" class="btn-edit">Sign Out</button>
+          </form>
+          {% else %}
+          <form method="post" action="{{ url_for('admin_sitin_timeout', lid=log.id) }}" style="display:inline">
+            <button type="submit" class="btn-edit">Time Out</button>
+          </form>
+          {% endif %}
+          <form method="post" action="{{ url_for('admin_sitin_delete', lid=log.id) }}" style="display:inline">
+            <button type="submit" class="btn-del" onclick="return confirm('Delete?')">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" class="no-data">No data available</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="table-count">Showing {{ logs|length }} record(s)</p>
+</div>
+{% endblock %}
+{% block extra_script %}
+<script>
+  function filterTable() {
+    const q = document.getElementById('sitin-search').value.toLowerCase();
+    document.querySelectorAll('#sitin-table tbody tr').forEach(r => {
+      r.style.display = r.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  }
+</script>
+{% endblock %}

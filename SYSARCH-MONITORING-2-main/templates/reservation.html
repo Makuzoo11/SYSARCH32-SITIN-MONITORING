@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Reservation – CCS Monitoring{% endblock %}
+{% block content %}
+<div class="res-wrap">
+  <div class="res-card">
+    <h1 class="res-title">Reservation</h1>
+    <p class="res-subtitle">Fill in the details below to reserve a lab session.</p>
+
+    <form method="post" action="{{ url_for('student_reservation') }}">
+      <div class="res-fields">
+
+        <div class="res-field">
+          <label class="res-label">ID Number</label>
+          <input type="text" class="res-input res-readonly" value="{{ user.id_number }}" readonly/>
+          <input type="hidden" name="id_number" value="{{ user.id_number }}"/>
+        </div>
+
+        <div class="res-field">
+          <label class="res-label">Student Name</label>
+          <input type="text" class="res-input res-readonly" value="{{ user.first_name }} {{ user.last_name }}" readonly/>
+        </div>
+
+        <div class="res-field">
+          <label class="res-label">Purpose</label>
+          <input type="text" name="purpose" class="res-input" placeholder="e.g. C Programming" required/>
+        </div>
+
+        <div class="res-field">
+          <label class="res-label">Laboratory</label>
+          <input type="text" name="lab" class="res-input" placeholder="e.g. 524" required/>
+        </div>
+
+        <div class="res-row2">
+          <div class="res-field">
+            <label class="res-label">Time In</label>
+            <input type="time" name="time_in" class="res-input" required/>
+          </div>
+          <div class="res-field">
+            <label class="res-label">Date</label>
+            <input type="date" name="date" class="res-input" required/>
+          </div>
+        </div>
+
+        <div class="res-field">
+          <label class="res-label">Remaining Sessions</label>
+          <input type="text" class="res-input res-readonly" value="{{ user.sessions_remaining }}" readonly/>
+        </div>
+
+      </div>
+
+      <div class="res-footer">
+        <button type="submit" class="res-btn-reserve">Submit</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+  .res-wrap {
+    display: flex;
+    justify-content: center;
+    padding: 2.5rem 1rem;
+  }
+  .res-card {
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid #ede9f8;
+    box-shadow: 0 4px 24px rgba(108,63,197,.07);
+    padding: 2.2rem 2.5rem;
+    width: 100%;
+    max-width: 560px;
+  }
+  .res-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #1e2535;
+    text-align: center;
+    margin-bottom: .3rem;
+  }
+  .res-subtitle {
+    font-size: .83rem;
+    color: #aaa;
+    text-align: center;
+    margin-bottom: 1.8rem;
+  }
+  .res-fields { display: flex; flex-direction: column; gap: .9rem; }
+  .res-field  { display: flex; flex-direction: column; gap: .28rem; }
+  .res-label  { font-size: .76rem; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: .04em; }
+  .res-input  {
+    padding: .55rem .85rem;
+    border: 1.5px solid #ede9f8;
+    border-radius: 8px;
+    font-size: .9rem;
+    font-family: inherit;
+    outline: none;
+    transition: border .2s;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .res-input:focus    { border-color: #6c3fc5; box-shadow: 0 0 0 3px rgba(108,63,197,.08); }
+  .res-readonly       { background: #f8f7fc; color: #666; cursor: default; }
+  .res-row2           { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem; }
+  .res-footer         { margin-top: 1.6rem; }
+  .res-btn-reserve {
+    width: 100%;
+    padding: .65rem 1rem;
+    background: #6c3fc5;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: .92rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .2s;
+    letter-spacing: .01em;
+  }
+  .res-btn-reserve:hover { background: #5a32a8; }
+
+  @media (max-width: 480px) {
+    .res-card  { padding: 1.5rem 1.2rem; }
+    .res-row2  { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}

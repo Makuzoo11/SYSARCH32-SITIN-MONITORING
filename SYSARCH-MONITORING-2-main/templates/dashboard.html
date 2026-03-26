@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+{% block title %}Dashboard – CCS Monitoring{% endblock %}
+{% block content %}
+<div class="dash3-grid">
+
+  <!-- LEFT: Student Info -->
+  <div class="d3-left">
+    <div class="d3-profile-card">
+      <div class="d3-avatar-wrap">
+        {% if user.profile_pic %}
+          <img src="{{ url_for('static', filename='images/' + user.profile_pic) }}"
+               alt="Profile" class="d3-avatar-img"/>
+        {% else %}
+          <div class="d3-avatar-initials">{{ user.first_name[0] }}{{ user.last_name[0] }}</div>
+        {% endif %}
+      </div>
+      <div class="d3-profile-name">{{ user.first_name }} {{ user.last_name }}</div>
+      <div class="d3-profile-id">{{ user.id_number }}</div>
+      <div class="d3-profile-badge">{{ user.course or 'N/A' }} &nbsp;·&nbsp; Year {{ user.course_level }}</div>
+
+      <div class="d3-divider"></div>
+
+      <div class="d3-info-list">
+        <div class="d3-info-row">
+          <span class="d3-lbl">Name</span>
+          <span class="d3-val">{{ user.first_name }} {{ user.last_name }}</span>
+        </div>
+        <div class="d3-info-row">
+          <span class="d3-lbl">Course</span>
+          <span class="d3-val">{{ user.course or '—' }}</span>
+        </div>
+        <div class="d3-info-row">
+          <span class="d3-lbl">Year</span>
+          <span class="d3-val">{{ user.course_level }}</span>
+        </div>
+        <div class="d3-info-row">
+          <span class="d3-lbl">Email</span>
+          <span class="d3-val">{{ user.email or '—' }}</span>
+        </div>
+        <div class="d3-info-row">
+          <span class="d3-lbl">Address</span>
+          <span class="d3-val">{{ user.address or '—' }}</span>
+        </div>
+        <div class="d3-info-row">
+          <span class="d3-lbl">Sessions</span>
+          <span class="d3-val d3-sessions">{{ user.sessions_remaining }} remaining</span>
+        </div>
+      </div>
+
+      <div class="d3-divider"></div>
+      <button class="d3-btn-edit" onclick="openProfileModal()">Edit Profile</button>
+    </div>
+  </div>
+
+  <!-- MIDDLE: Announcements -->
+  <div class="d3-mid">
+    <div class="d3-card">
+      <div class="d3-card-header">Announcement</div>
+      <div class="d3-ann-list">
+        {% for ann in announcements %}
+        <div class="d3-ann-item">
+          <div class="d3-ann-meta">CCS Admin &nbsp;·&nbsp; {{ ann.created_at[:10] }}</div>
+          {% if ann.content %}<p class="d3-ann-body">{{ ann.content }}</p>{% endif %}
+        </div>
+        {% else %}
+        <p class="d3-empty">No announcements yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Rules & Regulations -->
+  <div class="d3-right">
+    <div class="d3-card">
+      <div class="d3-card-header">Rules and Regulations</div>
+      <div class="d3-rules-body">
+        <p class="d3-rules-uni">University of Cebu<br/><span>College of Information &amp; Computer Studies</span></p>
+        <p class="d3-rules-sub">Laboratory Rules and Regulations</p>
+        <p class="d3-rules-intro">To avoid embarrassment and maintain camaraderie with your friends and superiors at our laboratories, please observe the following:</p>
+        <ol class="d3-rules-list">
+          <li>Maintain silence, proper decorum, and discipline inside the laboratory. Mobile phones, walkmans and other personal pieces of equipment must be switched off.</li>
+          <li>Games are not allowed inside the lab. This includes computer-related games, card games and other games that may disturb the operation of the lab.</li>
+          <li>Surfing the Internet is allowed only with the permission of the instructor. Downloading and installing of software are strictly prohibited.</li>
+          <li>Getting access to other websites not related to the course is not allowed.</li>
+          <li>Deleting computer files and changing the configuration of the computer is a major offense.</li>
+          <li>Observe computer time. All units must be shut down after use.</li>
+          <li>Students must inform the laboratory in-charge of any problems encountered in the computer.</li>
+          <li>No food and drinks are allowed inside the laboratory.</li>
+          <li>Only those who are officially enrolled are allowed to use the laboratory.</li>
+          <li>Wearing of ID is strictly required.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- EDIT PROFILE MODAL -->
+<div class="ep-overlay" id="profile-modal" onclick="if(event.target.id=='profile-modal')closeProfileModal()">
+  <div class="ep-box">
+    <div class="ep-header">
+      <h3>Edit Profile</h3>
+      <button class="ep-close" onclick="closeProfileModal()">×</button>
+    </div>
+    <div class="ep-tabs">
+      <button class="ep-tab active" id="tab-info-btn" onclick="switchTab('info')">Profile Info</button>
+      <button class="ep-tab" id="tab-pw-btn" onclick="switchTab('pw')">Change Password</button>
+    </div>
+
+    <!-- TAB 1: Profile Info -->
+    <div class="ep-tab-content" id="tab-info">
+      <form method="post" action="{{ url_for('edit_profile') }}" enctype="multipart/form-data">
+        <input type="hidden" name="tab" value="info"/>
+        <div class="ep-pic-section">
+          <div id="pic-preview" class="ep-pic-preview">
+            {% if user.profile_pic %}
+              <img src="{{ url_for('static', filename='images/' + user.profile_pic) }}" alt="Profile" class="ep-pic-img"/>
+            {% else %}
+              <div class="ep-pic-initials">{{ user.first_name[0] }}{{ user.last_name[0] }}</div>
+            {% endif %}
+          </div>
+          <div class="ep-pic-actions">
+            <label class="ep-btn-photo" for="profile_pic_input">Change Photo</label>
+            <input type="file" name="profile_pic" id="profile_pic_input" accept="image/*" style="display:none;" onchange="previewPic(this)"/>
+            <p class="ep-pic-hint">JPG, PNG, GIF or WEBP</p>
+          </div>
+        </div>
+        <div class="ep-fields">
+          <div class="ep-field-group">
+            <div class="ep-field"><label>First Name</label><input type="text" name="first_name" value="{{ user.first_name }}" required/></div>
+            <div class="ep-field"><label>Last Name</label><input type="text" name="last_name" value="{{ user.last_name }}" required/></div>
+          </div>
+          <div class="ep-field"><label>Email Address</label><input type="email" name="email" value="{{ user.email or '' }}" placeholder="you@email.com"/></div>
+          <div class="ep-field"><label>Address</label><input type="text" name="address" value="{{ user.address or '' }}" placeholder="Your address"/></div>
+          <div class="ep-field"><label>Current Password <span class="ep-required">* required to save</span></label><input type="password" name="current_password" placeholder="Enter current password" required/></div>
+        </div>
+        <div class="ep-footer">
+          <button type="button" class="ep-btn-cancel" onclick="closeProfileModal()">Cancel</button>
+          <button type="submit" class="ep-btn-save">Save Changes</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- TAB 2: Change Password -->
+    <div class="ep-tab-content" id="tab-pw" style="display:none;">
+      <form method="post" action="{{ url_for('edit_profile') }}" onsubmit="return validatePwForm()">
+        <input type="hidden" name="tab" value="pw"/>
+        <p class="ep-pw-desc">Choose a strong password you haven't used before.</p>
+        <div class="ep-fields">
+          <div class="ep-field"><label>Current Password</label><div class="ep-pw-wrap"><input type="password" name="current_password" id="cur-pw" placeholder="Enter current password" required/><button type="button" class="ep-toggle-pw" onclick="togglePw('cur-pw',this)">Show</button></div></div>
+          <div class="ep-field"><label>New Password</label><div class="ep-pw-wrap"><input type="password" name="new_password" id="new-pw" placeholder="New password" required/><button type="button" class="ep-toggle-pw" onclick="togglePw('new-pw',this)">Show</button></div></div>
+          <div class="ep-field"><label>Confirm New Password</label><div class="ep-pw-wrap"><input type="password" name="confirm_password" id="confirm-pw" placeholder="Repeat new password" required/><button type="button" class="ep-toggle-pw" onclick="togglePw('confirm-pw',this)">Show</button></div></div>
+          <p id="pw-mismatch" class="ep-pw-error" style="display:none;">Passwords do not match.</p>
+        </div>
+        <div class="ep-footer">
+          <button type="button" class="ep-btn-cancel" onclick="closeProfileModal()">Cancel</button>
+          <button type="submit" class="ep-btn-save">Update Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* ── Layout ── */
+  .dash3-grid {
+    display: grid;
+    grid-template-columns: 250px 1fr 290px;
+    gap: 1.4rem;
+    padding: 1.4rem;
+    align-items: start;
+    min-height: calc(100vh - 60px);
+  }
+  @media (max-width: 1024px) {
+    .dash3-grid { grid-template-columns: 1fr 1fr; }
+    .d3-right   { grid-column: span 2; }
+  }
+  @media (max-width: 640px) {
+    .dash3-grid { grid-template-columns: 1fr; }
+    .d3-right   { grid-column: span 1; }
+  }
+
+  /* ── Shared card base ── */
+  .d3-card, .d3-profile-card {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #ede9f8;
+    box-shadow: 0 2px 12px rgba(108,63,197,.06);
+  }
+
+  /* ── Profile card ── */
+  .d3-profile-card {
+    padding: 1.6rem 1.4rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .d3-avatar-wrap    { margin-bottom: 1rem; }
+  .d3-avatar-img     { width: 88px; height: 88px; border-radius: 50%; object-fit: cover; border: 3px solid #6c3fc5; }
+  .d3-avatar-initials {
+    width: 88px; height: 88px; border-radius: 50%;
+    background: linear-gradient(135deg, #6c3fc5, #8b5cf6);
+    color: #fff; font-size: 1.7rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .d3-profile-name   { font-size: 1rem; font-weight: 700; color: #1e2535; margin-bottom: .2rem; }
+  .d3-profile-id     { font-size: .78rem; color: #aaa; margin-bottom: .5rem; }
+  .d3-profile-badge  {
+    font-size: .75rem; font-weight: 600; color: #6c3fc5;
+    background: #f0eefa; border-radius: 20px; padding: .25rem .8rem;
+  }
+  .d3-divider        { width: 100%; height: 1px; background: #f0eefa; margin: 1rem 0; }
+
+  /* ── Info list ── */
+  .d3-info-list { width: 100%; display: flex; flex-direction: column; gap: .6rem; }
+  .d3-info-row  { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; }
+  .d3-lbl       { font-size: .72rem; font-weight: 700; color: #b0aac0; text-transform: uppercase; letter-spacing: .05em; flex-shrink: 0; }
+  .d3-val       { font-size: .84rem; color: #2d2d3a; font-weight: 500; text-align: right; word-break: break-word; }
+  .d3-sessions  { color: #6c3fc5; font-weight: 700; }
+
+  /* ── Edit button ── */
+  .d3-btn-edit {
+    width: 100%; padding: .52rem 1rem; margin-top: .2rem;
+    background: #f0eefa; color: #6c3fc5;
+    border: none; border-radius: 8px;
+    font-size: .85rem; font-weight: 600; cursor: pointer;
+    transition: background .2s;
+  }
+  .d3-btn-edit:hover { background: #e2d6f7; }
+
+  /* ── Card header ── */
+  .d3-card-header {
+    padding: .9rem 1.2rem;
+    font-size: .88rem; font-weight: 700; color: #1e2535;
+    border-bottom: 1px solid #f0eefa;
+    letter-spacing: .01em;
+  }
+
+  /* ── Announcements ── */
+  .d3-ann-list  { padding: .9rem 1.2rem; display: flex; flex-direction: column; gap: .85rem; max-height: 540px; overflow-y: auto; }
+  .d3-ann-item  { padding: .75rem 1rem; background: #faf8ff; border-radius: 8px; border-left: 3px solid #6c3fc5; }
+  .d3-ann-meta  { font-size: .72rem; font-weight: 600; color: #999; margin-bottom: .35rem; }
+  .d3-ann-body  { font-size: .84rem; color: #444; line-height: 1.6; margin: 0; }
+  .d3-empty     { font-size: .83rem; color: #ccc; text-align: center; padding: 1.5rem 0; }
+
+  /* ── Rules ── */
+  .d3-rules-body   { padding: .9rem 1.2rem; max-height: 540px; overflow-y: auto; }
+  .d3-rules-uni    { text-align: center; font-size: .84rem; font-weight: 700; color: #1e2535; margin-bottom: .25rem; }
+  .d3-rules-uni span { font-size: .75rem; font-weight: 500; color: #666; display: block; }
+  .d3-rules-sub    { text-align: center; font-size: .75rem; font-weight: 700; color: #444; text-transform: uppercase; letter-spacing: .04em; margin: .7rem 0 .5rem; }
+  .d3-rules-intro  { font-size: .78rem; color: #666; line-height: 1.55; margin-bottom: .8rem; }
+  .d3-rules-list   { padding-left: 1.1rem; display: flex; flex-direction: column; gap: .5rem; }
+  .d3-rules-list li { font-size: .78rem; color: #555; line-height: 1.55; }
+
+  /* ── Modal ── */
+  .ep-overlay { display:none; position:fixed; inset:0; background:rgba(24,20,46,.5); backdrop-filter:blur(4px); z-index:9000; align-items:center; justify-content:center; }
+  .ep-overlay.open { display:flex; }
+  .ep-box { background:#fff; border-radius:16px; box-shadow:0 16px 56px rgba(0,0,0,.16); width:100%; max-width:480px; max-height:90vh; overflow-y:auto; animation:epIn .26s cubic-bezier(.22,.68,0,1.2); }
+  @keyframes epIn { from{opacity:0;transform:scale(.94) translateY(12px)} to{opacity:1;transform:scale(1) translateY(0)} }
+  .ep-header { display:flex; align-items:center; justify-content:space-between; padding:1.2rem 1.4rem .8rem; }
+  .ep-header h3 { font-size:1rem; font-weight:700; color:#1e2535; margin:0; }
+  .ep-close { background:#f0eefa; border:none; border-radius:50%; width:28px; height:28px; font-size:.95rem; color:#6c3fc5; cursor:pointer; display:flex; align-items:center; justify-content:center; font-weight:700; transition:all .2s; }
+  .ep-close:hover { background:#6c3fc5; color:#fff; }
+  .ep-tabs { display:flex; padding:0 1.4rem; border-bottom:1px solid #f0eefa; }
+  .ep-tab { padding:.5rem 1.1rem; border:none; background:transparent; color:#bbb; font-size:.85rem; font-weight:600; cursor:pointer; transition:all .18s; border-bottom:2px solid transparent; margin-bottom:-1px; }
+  .ep-tab.active { color:#6c3fc5; border-bottom:2px solid #6c3fc5; }
+  .ep-tab:hover:not(.active) { color:#6c3fc5; }
+  .ep-tab-content { padding:1.2rem 1.4rem 1rem; }
+  .ep-pic-section { display:flex; align-items:center; gap:1.1rem; background:#faf8ff; border-radius:10px; padding:.9rem 1.1rem; margin-bottom:1.1rem; }
+  .ep-pic-preview { flex-shrink:0; }
+  .ep-pic-img { width:64px; height:64px; border-radius:50%; object-fit:cover; border:2px solid #6c3fc5; display:block; }
+  .ep-pic-initials { width:64px; height:64px; border-radius:50%; background:linear-gradient(135deg,#6c3fc5,#8b5cf6); color:#fff; font-size:1.3rem; font-weight:700; display:flex; align-items:center; justify-content:center; }
+  .ep-pic-actions { display:flex; flex-direction:column; gap:.3rem; }
+  .ep-btn-photo { display:inline-block; background:#6c3fc5; color:#fff; border-radius:7px; padding:.35rem .85rem; font-size:.8rem; font-weight:600; cursor:pointer; transition:background .2s; }
+  .ep-btn-photo:hover { background:#5a32a8; }
+  .ep-pic-hint { font-size:.71rem; color:#ccc; margin:0; }
+  .ep-fields { display:flex; flex-direction:column; gap:.8rem; }
+  .ep-field-group { display:grid; grid-template-columns:1fr 1fr; gap:.8rem; }
+  .ep-field { display:flex; flex-direction:column; gap:.25rem; }
+  .ep-field label { font-size:.76rem; font-weight:600; color:#666; }
+  .ep-field input { padding:.5rem .75rem; border:1.5px solid #ede9f8; border-radius:7px; font-size:.88rem; font-family:inherit; transition:border .2s; outline:none; }
+  .ep-field input:focus { border-color:#6c3fc5; box-shadow:0 0 0 3px rgba(108,63,197,.07); }
+  .ep-required { font-size:.7rem; color:#ccc; font-weight:400; margin-left:.3rem; }
+  .ep-pw-desc { font-size:.82rem; color:#999; margin-bottom:1rem; }
+  .ep-pw-wrap { position:relative; display:flex; }
+  .ep-pw-wrap input { flex:1; padding-right:4rem; }
+  .ep-toggle-pw { position:absolute; right:.6rem; top:50%; transform:translateY(-50%); background:none; border:none; color:#6c3fc5; font-size:.76rem; font-weight:600; cursor:pointer; padding:0; }
+  .ep-pw-error { color:#e53e3e; font-size:.78rem; margin:0; }
+  .ep-footer { display:flex; justify-content:flex-end; gap:.6rem; margin-top:1.2rem; padding-top:.9rem; border-top:1px solid #f5f2fc; }
+  .ep-btn-cancel { padding:.46rem 1.1rem; border:1.5px solid #ede9f8; border-radius:7px; background:#fff; color:#777; font-size:.85rem; font-weight:600; cursor:pointer; transition:all .2s; }
+  .ep-btn-cancel:hover { background:#f9f9f9; }
+  .ep-btn-save { padding:.46rem 1.3rem; border:none; border-radius:7px; background:#6c3fc5; color:#fff; font-size:.85rem; font-weight:600; cursor:pointer; transition:background .2s; }
+  .ep-btn-save:hover { background:#5a32a8; }
+</style>
+
+<script>
+  function openProfileModal()  { document.getElementById('profile-modal').classList.add('open'); }
+  function closeProfileModal() { document.getElementById('profile-modal').classList.remove('open'); }
+  function switchTab(tab) {
+    document.getElementById('tab-info').style.display = tab==='info'?'':'none';
+    document.getElementById('tab-pw').style.display   = tab==='pw'?'':'none';
+    document.getElementById('tab-info-btn').classList.toggle('active', tab==='info');
+    document.getElementById('tab-pw-btn').classList.toggle('active',   tab==='pw');
+  }
+  function previewPic(input) {
+    if (input.files && input.files[0]) {
+      const reader = new FileReader();
+      reader.onload = e => { document.getElementById('pic-preview').innerHTML = `<img src="${e.target.result}" class="ep-pic-img"/>`; };
+      reader.readAsDataURL(input.files[0]);
+    }
+  }
+  function togglePw(id, btn) {
+    const input = document.getElementById(id);
+    input.type = input.type==='password'?'text':'password';
+    btn.textContent = input.type==='password'?'Show':'Hide';
+  }
+  function validatePwForm() {
+    const np=document.getElementById('new-pw').value, cp=document.getElementById('confirm-pw').value;
+    const msg=document.getElementById('pw-mismatch');
+    if(np!==cp){msg.style.display='block';return false;}
+    msg.style.display='none'; return true;
+  }
+</script>
+{% endblock %}

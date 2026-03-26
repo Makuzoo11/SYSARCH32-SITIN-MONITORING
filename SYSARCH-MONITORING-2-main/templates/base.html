@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}CCS Monitoring{% endblock %}</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/icon.png') }}"/>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="{% if session.get('user_id') %}{{ url_for('dashboard') }}{% else %}{{ url_for('login') }}{% endif %}">
+    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo" style="width:36px;height:36px;object-fit:contain;flex-shrink:0;"/>
+    <span>College of Computer Studies Sit-in Monitoring System</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="{% if session.get('user_id') %}{{ url_for('dashboard') }}{% else %}{{ url_for('login') }}{% endif %}">Home</a></li>
+    {% if session.get('user_id') %}
+      <li><a href="{{ url_for('student_history') }}">History</a></li>
+      <li><a href="{{ url_for('student_reservation') }}">Reservation</a></li>
+      <li><a href="{{ url_for('logout') }}">Logout</a></li>
+    {% else %}
+      <li><a href="{{ url_for('login') }}">Login</a></li>
+      <li><a href="{{ url_for('register') }}">Register</a></li>
+    {% endif %}
+  </ul>
+</nav>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div id="flash-data" style="display:none">
+      {% for cat, msg in messages %}
+        <span data-cat="{{ cat }}" data-msg="{{ msg }}"></span>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+<!-- Alert Modal -->
+<div id="alert-overlay" class="hidden">
+  <div id="alert-box">
+    <div id="alert-icon-wrap">
+      <span id="alert-icon">!</span>
+    </div>
+    <p id="alert-msg"></p>
+    <button id="alert-close" onclick="closeAlert()">✕</button>
+  </div>
+</div>
+
+<main>{% block content %}{% endblock %}</main>
+
+<style>
+  #alert-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(24, 20, 46, 0.55);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    pointer-events: none;
+  }
+  #alert-overlay:not(.hidden) {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  #alert-box {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 12px 48px rgba(0,0,0,.18);
+    padding: 2.5rem 2rem 2rem;
+    width: 100%;
+    max-width: 360px;
+    text-align: center;
+    position: relative;
+    transform: scale(0.88) translateY(16px);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.22, 0.68, 0, 1.25);
+  }
+  #alert-overlay:not(.hidden) #alert-box {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+  #alert-icon-wrap {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #fdecea;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.2rem;
+    font-size: 1.8rem;
+    color: #c0392b;
+    font-weight: bold;
+  }
+  #alert-icon-wrap.success {
+    background: #e6f7f1;
+    color: #0f8a5f;
+  }
+  #alert-msg {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #1e2535;
+    margin-bottom: 1.6rem;
+    line-height: 1.5;
+  }
+  #alert-close {
+    position: absolute;
+    top: 0.9rem;
+    right: 0.9rem;
+    background: #f0eefa;
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    font-size: 0.9rem;
+    color: #6c3fc5;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    font-weight: 700;
+  }
+  #alert-close:hover {
+    background: #6c3fc5;
+    color: white;
+  }
+
+  @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+</style>
+
+<script>
+  function closeAlert() {
+    const overlay = document.getElementById('alert-overlay');
+    overlay.classList.add('hidden');
+  }
+
+  function showAlert(message, category) {
+    const overlay  = document.getElementById('alert-overlay');
+    const msgEl    = document.getElementById('alert-msg');
+    const iconWrap = document.getElementById('alert-icon-wrap');
+    const icon     = document.getElementById('alert-icon');
+
+    msgEl.textContent = message;
+
+    if (category === 'success' || category === 'success-message') {
+      iconWrap.className = 'alert-icon-wrap success';
+      icon.textContent = '✓';
+    } else {
+      iconWrap.className = 'alert-icon-wrap';
+      icon.textContent = '✕';
+    }
+
+    overlay.classList.remove('hidden');
+  }
+
+  // Show only the first flash message (prevents spam if many flashes)
+  document.addEventListener('DOMContentLoaded', () => {
+    const flashSpans = document.querySelectorAll('#flash-data span');
+    if (flashSpans.length > 0) {
+      const first = flashSpans[0];
+      const msg = first.getAttribute('data-msg');
+      const cat = first.getAttribute('data-cat') || 'error';
+      showAlert(msg, cat);
+    }
+  });
+</script>
+
+</body>
+</html>

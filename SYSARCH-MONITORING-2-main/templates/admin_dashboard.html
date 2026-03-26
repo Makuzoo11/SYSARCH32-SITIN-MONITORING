@@ -1,0 +1,90 @@
+{% extends "admin_base.html" %}
+{% block title %}Admin Dashboard – CCS{% endblock %}
+{% block content %}
+<div class="admin-grid">
+  <div class="admin-card">
+    <div class="card-header-blue">📊 Statistics</div>
+    <div class="card-body">
+      <div class="stat-row">
+        <span class="stat-label">Students Registered</span>
+        <span class="stat-val">{{ stats.total_students }}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Currently Sit-in</span>
+        <span class="stat-val">{{ stats.currently_sitin }}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Total Sit-in</span>
+        <span class="stat-val">{{ stats.total_sitin }}</span>
+      </div>
+      {% if course_stats %}
+      <div class="chart-wrap">
+        <div style="width:220px;height:220px;position:relative;">
+          <canvas id="courseChart"></canvas>
+        </div>
+        <div class="chart-legend" id="chart-legend"></div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="admin-card">
+    <div class="card-header-blue">📢 Announcement</div>
+    <div class="card-body">
+      <form method="post" action="{{ url_for('post_announcement') }}">
+        <label class="ann-label">New Announcement</label>
+        <textarea name="content" class="ann-textarea" rows="4" placeholder="Write an announcement..."></textarea>
+        <button type="submit" class="btn-submit-ann">Submit</button>
+      </form>
+      <h2 class="ann-title">Posted Announcements</h2>
+      {% for ann in announcements %}
+      <div class="ann-item">
+        <div class="ann-meta">
+          <span>CCS Admin &nbsp;·&nbsp; {{ ann.created_at[:10] }}</span>
+          <form method="post" action="{{ url_for('delete_announcement', aid=ann.id) }}" style="display:inline">
+            <button type="submit" class="btn-ann-delete" title="Delete">✕</button>
+          </form>
+        </div>
+        {% if ann.content %}<p class="ann-content">{{ ann.content }}</p>{% endif %}
+      </div>
+      {% else %}
+      <p style="color:#888;font-size:.84rem;text-align:center;padding:1rem 0;">No announcements yet.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script>
+  const courseData = {{ course_stats | tojson }};
+  const colors = ['#6c3fc5','#f5c518','#8b5cf6','#10b981','#ef4444','#06b6d4','#f59e0b'];
+  if (courseData && courseData.length) {
+    new Chart(document.getElementById('courseChart').getContext('2d'), {
+      type: 'pie',
+      data: {
+        labels: courseData.map(s => s.course || 'N/A'),
+        datasets: [{
+          data: courseData.map(s => s.cnt),
+          backgroundColor: colors,
+          borderWidth: 3,
+          borderColor: '#fff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: { legend: { display: false } },
+        animation: { duration: 600 }
+      }
+    });
+    document.getElementById('chart-legend').innerHTML = courseData.map((s,i) =>
+      `<div class="legend-item">
+        <span class="legend-dot" style="background:${colors[i%colors.length]}"></span>
+        ${s.course || 'N/A'}
+       </div>`
+    ).join('');
+  }
+</script>
+{% endblock %}

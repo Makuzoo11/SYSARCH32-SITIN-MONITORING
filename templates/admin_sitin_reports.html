@@ -1,0 +1,113 @@
+{% extends "admin_base.html" %}
+{% block title %}Sit-in Reports – CCS Admin{% endblock %}
+{% block content %}
+<div class="page-card">
+  <h1 class="page-title">Sit-in Reports</h1>
+
+  <!-- Summary Cards -->
+  <div class="rpt-summary">
+    <div class="rpt-stat-card">
+      <div class="rpt-stat-val">{{ stats.total }}</div>
+      <div class="rpt-stat-lbl">Total Sit-ins</div>
+    </div>
+    <div class="rpt-stat-card">
+      <div class="rpt-stat-val">{{ stats.active }}</div>
+      <div class="rpt-stat-lbl">Currently Active</div>
+    </div>
+    <div class="rpt-stat-card">
+      <div class="rpt-stat-val">{{ stats.done }}</div>
+      <div class="rpt-stat-lbl">Completed</div>
+    </div>
+    <div class="rpt-stat-card">
+      <div class="rpt-stat-val">{{ stats.today }}</div>
+      <div class="rpt-stat-lbl">Today</div>
+    </div>
+  </div>
+
+  <!-- Recent Sessions -->
+  <div style="margin-top:1.5rem;">
+    <div class="rpt-table-header">
+      <h3 class="rpt-section-title">Recent Sessions</h3>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr><th>ID Number</th><th>Name</th><th>Laboratory</th><th>Purpose</th><th>Time In</th><th>Time Out</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for row in recent %}
+        <tr>
+          <td>{{ row.id_number }}</td>
+          <td>{{ row.name }}</td>
+          <td>{{ row.lab_room }}</td>
+          <td>{{ row.purpose }}</td>
+          <td>{{ row.time_in }}</td>
+          <td>{{ row.time_out or 'N/A' }}</td>
+          <td>{{ row.status }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="no-data">No data available.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Detailed Table -->
+  <div style="margin-top:1.5rem;">
+    <div class="rpt-table-header">
+      <h3 class="rpt-section-title">Summary by Course</h3>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr><th>Course</th><th>Total Sit-ins</th><th>Active</th><th>Completed</th></tr>
+      </thead>
+      <tbody>
+        {% for row in by_course %}
+        <tr>
+          <td>{{ row.course or 'N/A' }}</td>
+          <td>{{ row.total }}</td>
+          <td>{{ row.active }}</td>
+          <td>{{ row.done }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="no-data">No data available.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div style="margin-top:1.5rem;">
+    <div class="rpt-table-header">
+      <h3 class="rpt-section-title">Summary by Laboratory</h3>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr><th>Laboratory</th><th>Total Sit-ins</th><th>Active</th><th>Completed</th></tr>
+      </thead>
+      <tbody>
+        {% for row in by_lab %}
+        <tr>
+          <td>{{ row.lab_room or 'N/A' }}</td>
+          <td>{{ row.total }}</td>
+          <td>{{ row.active }}</td>
+          <td>{{ row.done }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="no-data">No data available.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<style>
+  .rpt-summary       { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-bottom:1.4rem; }
+  .rpt-stat-card     { background:#fff; border:1px solid #ede9f8; border-radius:10px; padding:1.1rem 1.2rem; text-align:center; box-shadow:0 2px 8px rgba(108,63,197,.05); }
+  .rpt-stat-val      { font-size:2rem; font-weight:800; color:#6c3fc5; line-height:1; }
+  .rpt-stat-lbl      { font-size:.75rem; color:#999; font-weight:600; margin-top:.35rem; text-transform:uppercase; letter-spacing:.04em; }
+  .rpt-section-title { font-size:.9rem; font-weight:700; color:#1e2535; margin-bottom:.7rem; }
+  @media (max-width:900px) { .rpt-summary { grid-template-columns:repeat(2,1fr); } }
+</style>
+
+{% block extra_script %}
+{% endblock %}
+{% endblock %}

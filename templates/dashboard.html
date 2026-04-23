@@ -1,0 +1,462 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - CCS Monitoring{% endblock %}
+{% block content %}
+<div class="student-shell">
+  <section class="hero-card">
+    <div>
+      <p class="hero-kicker">Student Dashboard</p>
+      <h1>{{ user.first_name }} {{ user.last_name }}</h1>
+    </div>
+    <div class="hero-metrics">
+      <div class="hero-metric">
+        <span>Remaining Sessions</span>
+        <strong>{{ user.sessions_remaining }}</strong>
+      </div>
+      <div class="hero-metric">
+        <span>Earned Points</span>
+        <strong>{{ user.reward_points }}</strong>
+      </div>
+      <div class="hero-metric">
+        <span>Pending Requests</span>
+        <strong>{{ pending_requests }}</strong>
+      </div>
+    </div>
+  </section>
+
+  <div class="student-grid">
+    <div class="left-stack">
+      <section class="student-card profile-panel">
+        <div class="profile-top">
+          <form method="post" action="{{ url_for('update_profile_photo') }}" enctype="multipart/form-data" class="profile-avatar-form">
+            <div class="profile-avatar">
+              {% if user.profile_pic %}
+                <img src="{{ url_for('static', filename='images/' + user.profile_pic) }}" alt="Profile"/>
+              {% else %}
+                <span>{{ user.first_name[0] }}{{ user.last_name[0] }}</span>
+              {% endif %}
+              <label class="profile-avatar-edit" for="profile-avatar-input" title="Update profile photo">
+                <span class="profile-avatar-edit-inner">
+                  <img src="{{ url_for('static', filename='images/camera-edit.png') }}" alt="Edit photo"/>
+                </span>
+              </label>
+              <input type="file" name="profile_pic" id="profile-avatar-input" accept="image/*" class="profile-avatar-input" onchange="submitProfilePhoto(this)"/>
+            </div>
+          </form>
+          <div>
+            <h2>{{ user.id_number }}</h2>
+            <p>{{ user.course or 'N/A' }} | Year {{ user.course_level }}</p>
+          </div>
+        </div>
+
+<div class="profile-info">
+  <div><span>Email</span><strong>{{ user.email or 'Not set' }}</strong></div>
+  <div><span>Address</span><strong>{{ user.address or 'Not set' }}</strong></div>
+  <div><span>Completed Tasks</span><strong>{{ user.completed_tasks }}</strong></div>
+  <div><span>Reservation Points</span><strong>{{ user.reservation_points }}</strong></div>
+</div>
+
+        <button class="profile-edit-btn" onclick="openProfileModal()">Edit Profile</button>
+      </section>
+
+      <section class="student-card leaderboard-panel">
+        <div class="section-head">
+          <h3>Leaderboard Preview</h3>
+          <a href="{{ url_for('leaderboard') }}">View full ranking</a>
+        </div>
+        <div class="leader-mini">
+          {% for row in leaderboard %}
+          <div class="leader-mini-row {% if row.id == user.id %}leader-self{% endif %}">
+            <div>
+              <strong>#{{ row.rank }} {{ row.first_name }} {{ row.last_name }}</strong>
+              <p>{{ row.reward_points }} pts | {{ row.total_hours }} hrs | {{ row.completed_tasks }} tasks</p>
+            </div>
+            <span>{{ row.leaderboard_score }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+
+    <section class="student-card">
+      <div class="section-head">
+        <h3>Announcements</h3>
+        <a href="{{ url_for('student_reservation') }}">Reserve a lab</a>
+      </div>
+      <div class="stack-list">
+        {% for ann in announcements %}
+        <article class="stack-item">
+          <div class="stack-meta">CCS Admin | {{ ann.created_at[:10] }}</div>
+          <p>{{ ann.content }}</p>
+        </article>
+        {% else %}
+        <p class="empty-note">No announcements yet.</p>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="student-card rules-panel">
+      <div class="section-head">
+        <h3>Lab Rules and Regulations</h3>
+        <a href="{{ url_for('student_history') }}">Open full history</a>
+      </div>
+      <ol class="rules-list">
+        <li>Maintain silence, proper decorum, and discipline inside the laboratory.</li>
+        <li>Games and unrelated browsing are not allowed inside the lab.</li>
+        <li>Downloading, installing software, or changing system configuration is prohibited.</li>
+        <li>Students must report computer issues to the laboratory in-charge immediately.</li>
+        <li>Food, drinks, and staying without official enrollment are not allowed.</li>
+        <li>Observe computer time, wear your ID, and shut down units properly after use.</li>
+      </ol>
+    </section>
+  </div>
+</div>
+
+<div class="notif-fab-wrap">
+  <button class="notif-fab" type="button" onclick="toggleNotifPanel()" aria-label="Notifications">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 22a2.5 2.5 0 0 0 2.3-1.5H9.7A2.5 2.5 0 0 0 12 22Zm7-4.5H5l1.5-1.8V11a5.5 5.5 0 1 1 11 0v4.7l1.5 1.8Z"/>
+    </svg>
+    {% if notifications|length %}
+    <span class="notif-count">{{ notifications|length }}</span>
+    {% endif %}
+  </button>
+
+  <div class="notif-panel" id="notif-panel">
+    <div class="notif-panel-head">
+      <h3>Notifications and Alerts</h3>
+      <button type="button" class="notif-close" onclick="closeNotifPanel()">x</button>
+    </div>
+    <div class="notif-panel-list">
+      {% for note in notifications %}
+      <article class="notif-item note-{{ note.category }}">
+        <div class="stack-meta">{{ note.title }} | {{ note.created_at[:16] }}</div>
+        <p>{{ note.message }}</p>
+      </article>
+      {% else %}
+      <p class="empty-note">No notifications yet.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="ep-overlay" id="profile-modal" onclick="if(event.target.id=='profile-modal')closeProfileModal()">
+  <div class="ep-box">
+    <div class="ep-header">
+      <h3>Edit Profile</h3>
+      <button class="ep-close" onclick="closeProfileModal()">x</button>
+    </div>
+    <div class="ep-tabs">
+      <button class="ep-tab active" id="tab-info-btn" onclick="switchTab('info')">Profile Info</button>
+      <button class="ep-tab" id="tab-pw-btn" onclick="switchTab('pw')">Change Password</button>
+    </div>
+
+    <div class="ep-tab-content" id="tab-info">
+      <form method="post" action="{{ url_for('edit_profile') }}" enctype="multipart/form-data">
+        <input type="hidden" name="tab" value="info"/>
+        <div class="ep-pic-section">
+          <div id="pic-preview" class="ep-pic-preview">
+            {% if user.profile_pic %}
+              <img src="{{ url_for('static', filename='images/' + user.profile_pic) }}" alt="Profile" class="ep-pic-img"/>
+            {% else %}
+              <div class="ep-pic-initials">{{ user.first_name[0] }}{{ user.last_name[0] }}</div>
+            {% endif %}
+          </div>
+          <div class="ep-pic-actions">
+            <label class="ep-btn-photo" for="profile_pic_input">Change Photo</label>
+            <input type="file" name="profile_pic" id="profile_pic_input" accept="image/*" style="display:none;" onchange="previewPic(this)"/>
+            <p class="ep-pic-hint">JPG, PNG, GIF or WEBP</p>
+          </div>
+        </div>
+        <div class="ep-fields">
+          <div class="ep-field-group">
+            <div class="ep-field"><label>First Name</label><input type="text" name="first_name" value="{{ user.first_name }}" required/></div>
+            <div class="ep-field"><label>Last Name</label><input type="text" name="last_name" value="{{ user.last_name }}" required/></div>
+          </div>
+          <div class="ep-field"><label>Email Address</label><input type="email" name="email" value="{{ user.email or '' }}" placeholder="you@email.com"/></div>
+          <div class="ep-field"><label>Address</label><input type="text" name="address" value="{{ user.address or '' }}" placeholder="Your address"/></div>
+        </div>
+        <div class="ep-footer">
+          <button type="button" class="ep-btn-cancel" onclick="closeProfileModal()">Cancel</button>
+          <button type="submit" class="ep-btn-save">Save Changes</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="ep-tab-content" id="tab-pw" style="display:none;">
+      <form method="post" action="{{ url_for('edit_profile') }}" onsubmit="return validatePwForm()">
+        <input type="hidden" name="tab" value="pw"/>
+        <p class="ep-pw-desc">Choose a strong password you have not used before.</p>
+        <div class="ep-fields">
+          <div class="ep-field"><label>Current Password</label><div class="ep-pw-wrap"><input type="password" name="current_password" id="cur-pw" required/><button type="button" class="ep-toggle-pw" onclick="togglePw('cur-pw',this)">Show</button></div></div>
+          <div class="ep-field"><label>New Password</label><div class="ep-pw-wrap"><input type="password" name="new_password" id="new-pw" required/><button type="button" class="ep-toggle-pw" onclick="togglePw('new-pw',this)">Show</button></div></div>
+          <div class="ep-field"><label>Confirm New Password</label><div class="ep-pw-wrap"><input type="password" name="confirm_password" id="confirm-pw" required/><button type="button" class="ep-toggle-pw" onclick="togglePw('confirm-pw',this)">Show</button></div></div>
+          <p id="pw-mismatch" class="ep-pw-error" style="display:none;">Passwords do not match.</p>
+        </div>
+        <div class="ep-footer">
+          <button type="button" class="ep-btn-cancel" onclick="closeProfileModal()">Cancel</button>
+          <button type="submit" class="ep-btn-save">Update Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<style>
+  .student-shell { max-width: 1280px; margin: 0 auto; }
+  .hero-card {
+    background: linear-gradient(135deg, #19335c, #365f9a);
+    color: #fff;
+    border-radius: 20px;
+    padding: 1.8rem;
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 1.2rem;
+    box-shadow: 0 18px 40px rgba(25, 51, 92, 0.18);
+  }
+  .hero-kicker { font-size: .78rem; text-transform: uppercase; letter-spacing: .14em; opacity: .72; margin-bottom: .4rem; }
+  .hero-card h1 { margin: 0; font-size: 2rem; }
+  .hero-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; }
+  .hero-metric { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.14); border-radius: 16px; padding: 1rem; }
+  .hero-metric span { display: block; font-size: .78rem; color: rgba(255,255,255,.72); margin-bottom: .5rem; }
+  .hero-metric strong { font-size: 1.8rem; }
+  .student-grid { display: grid; grid-template-columns: 320px minmax(0, 1fr) minmax(0, 1fr); gap: 1.1rem; margin-top: 1.2rem; align-items: start; }
+  .left-stack { display: flex; flex-direction: column; gap: 1.1rem; }
+  .student-card {
+    background: #fff;
+    border: 1px solid #d8e1ec;
+    border-radius: 18px;
+    padding: 1.2rem;
+    box-shadow: 0 10px 30px rgba(70, 93, 121, 0.08);
+  }
+  .profile-top { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.2rem; }
+  .profile-avatar-form { margin: 0; }
+  .profile-avatar { width: 76px; height: 76px; border-radius: 24px; background: linear-gradient(135deg, #d4a720, #e8c86b); display: flex; align-items: center; justify-content: center; overflow: hidden; color: #19335c; font-weight: 800; font-size: 1.4rem; }
+  .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .profile-avatar { position: relative; }
+  .profile-avatar-edit {
+    position: absolute;
+    inset: 0;
+    border-radius: 24px;
+    background: rgba(25, 51, 92, 0.18);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity .18s ease, background .18s ease;
+  }
+  .profile-avatar:hover .profile-avatar-edit,
+  .profile-avatar:focus-within .profile-avatar-edit {
+    opacity: 1;
+  }
+  .profile-avatar-edit:hover {
+    background: rgba(25, 51, 92, 0.28);
+  }
+  .profile-avatar-edit-inner {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(25, 51, 92, 0.12);
+    box-shadow: 0 8px 18px rgba(25, 51, 92, 0.16);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .profile-avatar-edit img {
+    width: 18px;
+    height: 18px;
+    display: block;
+  }
+  .profile-avatar-input { display: none; }
+  .profile-top h2 { margin: 0; font-size: 1rem; color: #19335c; }
+  .profile-top p { margin: .2rem 0 0; color: #6a7890; }
+  .profile-info { display: grid; gap: .8rem; }
+  .profile-info span, .remarks-box span { display: block; font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: #8190a7; margin-bottom: .25rem; }
+  .profile-info strong { font-size: .95rem; color: #223953; }
+  .remarks-box { margin-top: 1rem; padding: .9rem; background: #eef4fb; border-radius: 14px; }
+  .remarks-box p { margin: 0; color: #465d79; line-height: 1.5; }
+  .profile-edit-btn { width: 100%; margin-top: 1rem; border: none; border-radius: 12px; background: #19335c; color: #fff; padding: .75rem 1rem; font-weight: 700; cursor: pointer; }
+  .section-head { display: flex; align-items: center; justify-content: space-between; gap: .7rem; margin-bottom: .9rem; }
+  .section-head h3 { margin: 0; font-size: 1rem; color: #19335c; }
+  .section-head a, .section-head span { font-size: .82rem; color: #365f9a; text-decoration: none; }
+  .stack-list { display: flex; flex-direction: column; gap: .8rem; max-height: 360px; overflow-y: auto; }
+  .stack-item { border-left: 4px solid #d4a720; padding: .8rem .9rem; background: #f7fafc; border-radius: 0 14px 14px 0; }
+  .stack-meta { font-size: .72rem; color: #7b88a0; margin-bottom: .35rem; }
+  .stack-item p { margin: 0; color: #2f4f4f; line-height: 1.5; }
+  .note-success { border-left-color: #49a36e; }
+  .note-error { border-left-color: #c96c55; }
+  .leader-mini { display: flex; flex-direction: column; gap: .65rem; }
+  .leader-mini-row { display: flex; justify-content: space-between; gap: .8rem; align-items: center; padding: .8rem .9rem; border-radius: 14px; background: #f7fafc; }
+  .leader-mini-row p { margin: .2rem 0 0; font-size: .8rem; color: #77889a; }
+  .leader-mini-row span { font-weight: 800; color: #19335c; }
+  .leader-self { border: 1px solid #d4a720; background: #fff8e1; }
+  .leaderboard-panel .leader-mini-row { padding: .75rem .8rem; }
+  .empty-note { color: #8392a6; }
+  .rules-list { margin: 0; padding-left: 1.2rem; color: #42556f; line-height: 1.7; }
+  .notif-fab-wrap { position: fixed; right: 1.6rem; bottom: 1.6rem; z-index: 8500; }
+  .notif-fab {
+    position: relative;
+    width: 60px;
+    height: 60px;
+    border: none;
+    border-radius: 50%;
+    background: #19335c;
+    box-shadow: 0 18px 40px rgba(25, 51, 92, 0.26);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .notif-fab svg { width: 26px; height: 26px; fill: #fff; }
+  .notif-count {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 .35rem;
+    border-radius: 999px;
+    background: #d4a720;
+    color: #19335c;
+    font-size: .75rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #f4f7fb;
+  }
+  .notif-panel {
+    position: absolute;
+    right: 0;
+    bottom: 74px;
+    width: 340px;
+    max-height: 420px;
+    background: #fff;
+    border: 1px solid #d8e1ec;
+    border-radius: 18px;
+    box-shadow: 0 20px 50px rgba(70, 93, 121, 0.18);
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(12px);
+    transition: opacity .2s ease, transform .2s ease;
+  }
+  .notif-panel.open {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+  .notif-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1rem .8rem;
+    border-bottom: 1px solid #edf2f7;
+  }
+  .notif-panel-head h3 { margin: 0; font-size: .98rem; color: #19335c; }
+  .notif-close {
+    border: none;
+    background: #edf3f9;
+    color: #365f9a;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+  }
+  .notif-panel-list { max-height: 350px; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: .75rem; }
+  .notif-item {
+    border-left: 4px solid #d4a720;
+    padding: .8rem .9rem;
+    background: #f7fafc;
+    border-radius: 0 14px 14px 0;
+  }
+  .notif-item p { margin: 0; color: #2f4f4f; line-height: 1.5; }
+  .ep-overlay { display:none; position:fixed; inset:0; background:rgba(24,20,46,.5); backdrop-filter:blur(4px); z-index:9000; align-items:center; justify-content:center; }
+  .ep-overlay.open { display:flex; }
+  .ep-box { background:#fff; border-radius:16px; box-shadow:0 16px 56px rgba(0,0,0,.16); width:100%; max-width:480px; max-height:90vh; overflow-y:auto; }
+  .ep-header { display:flex; align-items:center; justify-content:space-between; padding:1.2rem 1.4rem .8rem; }
+  .ep-header h3 { font-size:1rem; font-weight:700; color:#1e2535; margin:0; }
+  .ep-close { background:#e7edf5; border:none; border-radius:50%; width:28px; height:28px; font-size:.95rem; color:#365f9a; cursor:pointer; }
+  .ep-tabs { display:flex; padding:0 1.4rem; border-bottom:1px solid #eef2f7; }
+  .ep-tab { padding:.5rem 1.1rem; border:none; background:transparent; color:#9aa6b6; font-size:.85rem; font-weight:600; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; }
+  .ep-tab.active { color:#365f9a; border-bottom-color:#365f9a; }
+  .ep-tab-content { padding:1.2rem 1.4rem 1rem; }
+  .ep-pic-section { display:flex; align-items:center; gap:1.1rem; background:#f7fafc; border-radius:10px; padding:.9rem 1.1rem; margin-bottom:1.1rem; }
+  .ep-pic-img, .ep-pic-initials { width:64px; height:64px; border-radius:50%; object-fit:cover; display:flex; align-items:center; justify-content:center; }
+  .ep-pic-initials { background:linear-gradient(135deg,#19335c,#365f9a); color:#fff; font-size:1.3rem; font-weight:700; }
+  .ep-btn-photo { display:inline-block; background:#19335c; color:#fff; border-radius:7px; padding:.35rem .85rem; font-size:.8rem; font-weight:600; cursor:pointer; }
+  .ep-fields { display:flex; flex-direction:column; gap:.8rem; }
+  .ep-field-group { display:grid; grid-template-columns:1fr 1fr; gap:.8rem; }
+  .ep-field { display:flex; flex-direction:column; gap:.25rem; }
+  .ep-field input { padding:.6rem .75rem; border:1.5px solid #d8e1ec; border-radius:10px; font-size:.88rem; }
+  .ep-pw-wrap { position:relative; display:flex; }
+  .ep-pw-wrap input { flex:1; padding-right:4rem; }
+  .ep-toggle-pw { position:absolute; right:.6rem; top:50%; transform:translateY(-50%); background:none; border:none; color:#365f9a; font-size:.76rem; font-weight:600; cursor:pointer; padding:0; }
+  .ep-footer { display:flex; justify-content:flex-end; gap:.6rem; margin-top:1.2rem; padding-top:.9rem; border-top:1px solid #eef2f7; }
+  .ep-btn-cancel, .ep-btn-save { padding:.55rem 1.2rem; border-radius:10px; font-weight:600; cursor:pointer; }
+  .ep-btn-cancel { border:1px solid #d8e1ec; background:#fff; color:#6a7890; }
+  .ep-btn-save { border:none; background:#19335c; color:#fff; }
+  .ep-pw-error { color:#c96c55; font-size:.78rem; margin:0; }
+  @media (max-width: 1100px) {
+    .hero-card { grid-template-columns: 1fr; }
+    .student-grid { grid-template-columns: 1fr 1fr; }
+    .left-stack { grid-column: span 2; }
+    .rules-panel { grid-column: span 2; }
+  }
+  @media (max-width: 720px) {
+    .hero-metrics, .student-grid, .ep-field-group { grid-template-columns: 1fr; }
+    .left-stack, .rules-panel { grid-column: span 1; }
+    .notif-fab-wrap { right: 1rem; bottom: 1rem; }
+    .notif-panel { width: min(340px, calc(100vw - 2rem)); }
+  }
+</style>
+
+<script>
+  function openProfileModal()  { document.getElementById('profile-modal').classList.add('open'); }
+  function closeProfileModal() { document.getElementById('profile-modal').classList.remove('open'); }
+  function submitProfilePhoto(input) {
+    if (input.files && input.files[0]) {
+      input.form.submit();
+    }
+  }
+  function toggleNotifPanel() {
+    document.getElementById('notif-panel').classList.toggle('open');
+  }
+  function closeNotifPanel() {
+    document.getElementById('notif-panel').classList.remove('open');
+  }
+  function switchTab(tab) {
+    document.getElementById('tab-info').style.display = tab==='info'?'':'none';
+    document.getElementById('tab-pw').style.display   = tab==='pw'?'':'none';
+    document.getElementById('tab-info-btn').classList.toggle('active', tab==='info');
+    document.getElementById('tab-pw-btn').classList.toggle('active', tab==='pw');
+  }
+  function previewPic(input) {
+    if (input.files && input.files[0]) {
+      const reader = new FileReader();
+      reader.onload = e => { document.getElementById('pic-preview').innerHTML = `<img src="${e.target.result}" class="ep-pic-img"/>`; };
+      reader.readAsDataURL(input.files[0]);
+    }
+  }
+  function togglePw(id, btn) {
+    const input = document.getElementById(id);
+    input.type = input.type==='password'?'text':'password';
+    btn.textContent = input.type==='password'?'Show':'Hide';
+  }
+  function validatePwForm() {
+    const np=document.getElementById('new-pw').value, cp=document.getElementById('confirm-pw').value;
+    const msg=document.getElementById('pw-mismatch');
+    if(np!==cp){msg.style.display='block';return false;}
+    msg.style.display='none';
+    return true;
+  }
+  document.addEventListener('click', function(event) {
+    const panel = document.getElementById('notif-panel');
+    const wrap = document.querySelector('.notif-fab-wrap');
+    if (panel && wrap && !wrap.contains(event.target)) {
+      panel.classList.remove('open');
+    }
+  });
+</script>
+{% endblock %}

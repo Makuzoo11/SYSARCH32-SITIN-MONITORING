@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Leaderboard - CCS Monitoring{% endblock %}
+{% block content %}
+<div class="leader-page">
+  <section class="leader-hero">
+    <div>
+      <p class="leader-kicker">Student Leaderboard</p>
+      <h1>Ranking Based on Performance</h1>
+    </div>
+    {% if user %}
+    <div class="leader-note">
+      <span>Your snapshot</span>
+      <strong>{{ user.first_name }} {{ user.last_name }}</strong>
+      <p>{{ user.reward_points }} points | {{ user.completed_tasks }} tasks</p>
+    </div>
+    {% endif %}
+  </section>
+
+  <div class="leader-layout">
+    <section class="leader-card">
+      <table class="leader-table">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Student</th>
+            <th>Points</th>
+            <th>Hours</th>
+            <th>Tasks</th>
+            <th>Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rankings %}
+          <tr {% if user and row.id == user.id %}class="leader-highlight"{% endif %}>
+            <td>#{{ row.rank }}</td>
+            <td>{{ row.first_name }} {{ row.last_name }}</td>
+            <td>{{ row.reward_points }}</td>
+            <td>{{ row.total_hours }}</td>
+            <td>{{ row.completed_tasks }}</td>
+            <td>{{ row.leaderboard_score }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6">No leaderboard data yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  </div>
+</div>
+
+<style>
+  .leader-page { max-width: 1280px; margin: 0 auto; }
+  .leader-hero { display:grid; grid-template-columns: 2fr 1fr; gap:1rem; background:linear-gradient(135deg,#19335c,#365f9a); color:#fff; border-radius:20px; padding:1.6rem 1.8rem; }
+  .leader-kicker { margin:0 0 .4rem; font-size:.78rem; text-transform:uppercase; letter-spacing:.14em; opacity:.72; }
+  .leader-hero h1 { margin:0 0 .5rem; }
+  .leader-hero p { margin:0; color:rgba(255,255,255,.82); line-height:1.6; }
+  .leader-note { background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.16); border-radius:16px; padding:1rem; }
+  .leader-note span { display:block; font-size:.76rem; opacity:.72; text-transform:uppercase; letter-spacing:.08em; margin-bottom:.35rem; }
+  .leader-note strong { display:block; font-size:1.1rem; margin-bottom:.3rem; }
+  .leader-layout { display:block; margin-top:1.2rem; }
+  .leader-card { background:#fff; border:1px solid #d8e1ec; border-radius:18px; padding:1.2rem; box-shadow:0 10px 30px rgba(70,93,121,.08); overflow:hidden; }
+  .leader-table { width:100%; border-collapse:collapse; }
+  .leader-table th, .leader-table td { padding:.85rem .75rem; border-bottom:1px solid #edf2f7; text-align:left; }
+  .leader-table th { font-size:.75rem; text-transform:uppercase; letter-spacing:.08em; color:#7b88a0; }
+  .leader-highlight { background:#fff8e1; }
+  .side-notes h3 { margin:0 0 .8rem; color:#19335c; }
+  .side-note { padding:.8rem .85rem; background:#f7fafc; border-radius:14px; margin-bottom:.7rem; }
+  .side-note p { margin:.35rem 0 0; color:#5d7088; line-height:1.5; }
+  @media (max-width: 960px) {
+    .leader-hero, .leader-layout { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}

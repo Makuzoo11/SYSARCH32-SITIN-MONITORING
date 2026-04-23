@@ -22,12 +22,27 @@
 
         <div class="res-field">
           <label class="res-label">Purpose</label>
-          <input type="text" name="purpose" class="res-input" placeholder="e.g. C Programming" required/>
+          <select name="purpose" class="res-input" required>
+            <option value="">-- Select Purpose --</option>
+            <option value="C Programming">C Programming</option>
+            <option value="Java">Java</option>
+            <option value="C#">C#</option>
+            <option value=".Net">.Net</option>
+            <option value="Database">Database</option>
+            <option value="Research">Research</option>
+            <option value="Others">Others</option>
+          </select>
         </div>
 
         <div class="res-field">
           <label class="res-label">Laboratory</label>
-          <input type="text" name="lab" class="res-input" placeholder="e.g. 524" required/>
+          <select name="lab" class="res-input" required>
+            <option value="">-- Select Lab --</option>
+            <option value="524">524</option>
+            <option value="526">526</option>
+            <option value="544">544</option>
+            <option value="530">530</option>
+          </select>
         </div>
 
         <div class="res-row2">
@@ -44,6 +59,12 @@
         <div class="res-field">
           <label class="res-label">Remaining Sessions</label>
           <input type="text" class="res-input res-readonly" value="{{ user.sessions_remaining }}" readonly/>
+        </div>
+
+        <div class="res-field">
+          <label class="res-label">Total Points</label>
+          <input type="text" class="res-input res-readonly" value="{{ user.reservation_points }}" readonly/>
+          <small style="font-size:.8rem;color:#8a8a8a;">Points are tracked for leaderboard and rewards.</small>
         </div>
 
       </div>

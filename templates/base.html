@@ -16,10 +16,11 @@
     <span>College of Computer Studies Sit-in Monitoring System</span>
   </a>
   <ul class="nav-links">
-    <li><a href="{% if session.get('user_id') %}{{ url_for('dashboard') }}{% else %}{{ url_for('login') }}{% endif %}">Home</a></li>
+    <li><a href="{% if session.get('user_id') %}{{ url_for('dashboard') }}{% else %}{{ url_for('login') }}{% endif %}" {% if request.endpoint == 'dashboard' %}class="active"{% endif %}>Home</a></li>
     {% if session.get('user_id') %}
-      <li><a href="{{ url_for('student_history') }}">History</a></li>
-      <li><a href="{{ url_for('student_reservation') }}">Reservation</a></li>
+      <li><a href="{{ url_for('student_history') }}" {% if request.endpoint == 'student_history' %}class="active"{% endif %}>History</a></li>
+      <li><a href="{{ url_for('student_reservation') }}" {% if request.endpoint == 'student_reservation' %}class="active"{% endif %}>Reservation</a></li>
+      <li><a href="{{ url_for('leaderboard') }}" {% if request.endpoint == 'leaderboard' %}class="active"{% endif %}>Leaderboard</a></li>
       <li><a href="{{ url_for('logout') }}">Logout</a></li>
     {% else %}
       <li><a href="{{ url_for('login') }}">Login</a></li>
@@ -45,7 +46,7 @@
       <span id="alert-icon">!</span>
     </div>
     <p id="alert-msg"></p>
-    <button id="alert-close" onclick="closeAlert()">✕</button>
+    <button id="alert-close" onclick="closeAlert()">×</button>
   </div>
 </div>
 
@@ -153,10 +154,10 @@
 
     if (category === 'success' || category === 'success-message') {
       iconWrap.className = 'alert-icon-wrap success';
-      icon.textContent = '✓';
+      icon.textContent = 'OK';
     } else {
       iconWrap.className = 'alert-icon-wrap';
-      icon.textContent = '✕';
+      icon.textContent = 'X';
     }
 
     overlay.classList.remove('hidden');

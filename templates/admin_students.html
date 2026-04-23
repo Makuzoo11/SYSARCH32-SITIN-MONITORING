@@ -1,0 +1,145 @@
+{% extends "admin_base.html" %}
+{% block title %}Students - CCS Admin{% endblock %}
+{% block content %}
+<div class="page-card">
+  <h1 class="page-title">Students Information</h1>
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <button class="btn-add" onclick="openModal('add-modal')">Add Students</button>
+      <form method="post" action="{{ url_for('reset_all_sessions') }}" style="display:inline">
+        <button type="submit" class="btn-reset" onclick="return confirm('Reset all sessions to 30?')">Reset All Sessions</button>
+      </form>
+    </div>
+    <div class="toolbar-right">
+      <form method="get" action="{{ url_for('admin_students') }}">
+        <label style="font-size:.85rem">Search: <input type="text" name="search" value="{{ search }}" class="table-search"/></label>
+      </form>
+    </div>
+  </div>
+  <table class="data-table">
+    <thead>
+      <tr><th>ID Number</th><th>Name</th><th>Year Level</th><th>Course</th><th>Remaining Session</th><th>Rewards</th><th>Tasks</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for s in students %}
+      <tr>
+        <td>{{ s.id_number }}</td>
+        <td>{{ s.last_name }}, {{ s.first_name }}{% if s.middle_name %} {{ s.middle_name[0] }}.{% endif %}</td>
+        <td>{{ s.course_level }}</td>
+        <td>{{ s.course or '-' }}</td>
+        <td>{{ s.sessions_remaining if s.sessions_remaining is not none else 30 }}</td>
+        <td>{{ s.reward_points }}</td>
+        <td>{{ s.completed_tasks }}</td>
+        <td class="action-btns">
+          <button class="btn-edit" onclick='openEditModal(
+            {{ s.id }},
+            {{ s.last_name | tojson }},
+            {{ s.first_name | tojson }},
+            {{ (s.middle_name or "") | tojson }},
+            {{ (s.course or "") | tojson }},
+            {{ s.course_level }},
+            {{ (s.email or "") | tojson }},
+            {{ (s.address or "") | tojson }},
+            {{ s.sessions_remaining if s.sessions_remaining is not none else 30 }},
+            {{ s.reward_points or 0 }},
+            {{ s.completed_tasks or 0 }},
+            {{ (s.admin_remarks or "") | tojson }}
+          )'>Edit</button>
+          <form method="post" action="{{ url_for('admin_delete_student', uid=s.id) }}" style="display:inline">
+            <button type="submit" class="btn-del" onclick="return confirm('Delete student?')">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" class="no-data">No students found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="table-count">Showing {{ students|length }} student(s)</p>
+</div>
+
+<div class="modal-overlay" id="add-modal" onclick="if(event.target.id=='add-modal')closeModal('add-modal')">
+  <div class="modal-box modal-wide">
+    <div class="modal-header"><h3>Add Student</h3><button class="modal-close" onclick="closeModal('add-modal')">x</button></div>
+    <form method="post" action="{{ url_for('admin_add_student') }}">
+      <div class="modal-body">
+        <div class="form2col">
+          <div class="mfield"><input type="text" name="id_number" placeholder="ID Number" required/></div>
+          <div class="mfield"><input type="text" name="last_name" placeholder="Last Name" required/></div>
+          <div class="mfield"><input type="text" name="first_name" placeholder="First Name" required/></div>
+          <div class="mfield"><input type="text" name="middle_name" placeholder="Middle Name"/></div>
+          <div class="mfield"><select name="course">{% for c in courses %}<option>{{ c }}</option>{% endfor %}</select></div>
+          <div class="mfield">
+            <select name="course_level">
+              {% for year in range(1, 5) %}
+              <option value="{{ year }}">{{ year }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mfield"><input type="email" name="email" placeholder="Email"/></div>
+          <div class="mfield"><input type="text" name="address" placeholder="Address"/></div>
+          <div class="mfield"><input type="password" name="password" placeholder="Password" required/></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-gray" onclick="closeModal('add-modal')">Cancel</button>
+        <button type="submit" class="btn-blue">Add Student</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="edit-modal" onclick="if(event.target.id=='edit-modal')closeModal('edit-modal')">
+  <div class="modal-box modal-wide">
+    <div class="modal-header"><h3>Edit Student</h3><button class="modal-close" onclick="closeModal('edit-modal')">x</button></div>
+    <form method="post" id="edit-form" action="#">
+      <div class="modal-body">
+        <div class="form2col">
+          <div class="mfield"><label>Last Name</label><input type="text" name="last_name" id="e-last" required/></div>
+          <div class="mfield"><label>First Name</label><input type="text" name="first_name" id="e-first" required/></div>
+          <div class="mfield"><label>Middle Name</label><input type="text" name="middle_name" id="e-middle"/></div>
+          <div class="mfield"><label>Course</label><select name="course" id="e-course">{% for c in courses %}<option>{{ c }}</option>{% endfor %}</select></div>
+          <div class="mfield">
+            <label>Year Level</label>
+            <select name="course_level" id="e-level">
+              {% for year in range(1, 5) %}
+              <option value="{{ year }}">{{ year }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mfield"><label>Email</label><input type="email" name="email" id="e-email"/></div>
+          <div class="mfield"><label>Address</label><input type="text" name="address" id="e-address"/></div>
+          <div class="mfield"><label>Remaining Sessions</label><input type="number" name="sessions_remaining" id="e-sessions" min="0" max="30" required/></div>
+          <div class="mfield"><label>Reward Points</label><input type="number" name="reward_points" id="e-points" min="0"/></div>
+          <div class="mfield"><label>Completed Tasks</label><input type="number" name="completed_tasks" id="e-tasks" min="0"/></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-gray" onclick="closeModal('edit-modal')">Cancel</button>
+        <button type="submit" class="btn-blue">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+  function openEditModal(id, last, first, middle, course, level, email, address, sessions, points, tasks, remarks) {
+    document.getElementById('edit-form').action = '/admin/students/edit/' + id;
+    document.getElementById('e-last').value = last;
+    document.getElementById('e-first').value = first;
+    document.getElementById('e-middle').value = middle;
+    document.getElementById('e-level').value = level;
+    document.getElementById('e-email').value = email;
+    document.getElementById('e-address').value = address;
+    document.getElementById('e-sessions').value = sessions;
+    document.getElementById('e-points').value = points;
+    document.getElementById('e-tasks').value = tasks;
+    // document.getElementById('e-remarks').value = remarks; // removed
+    const sel = document.getElementById('e-course');
+    for (let o of sel.options) o.selected = (o.value === course);
+    openModal('edit-modal');
+  }
+</script>
+{% endblock %}

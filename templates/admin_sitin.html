@@ -1,0 +1,75 @@
+{% extends "admin_base.html" %}
+{% block title %}View Sit-in Records – CCS Admin{% endblock %}
+{% block content %}
+<div class="page-card">
+  <h1 class="page-title">View Sit-in Records</h1>
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <button class="btn-add" onclick="openFreshSitinModal()">+ New Sit-in</button>
+    </div>
+    <div class="toolbar-right">
+      <label style="font-size:.85rem">Search:
+        <input type="text" id="sitin-search" class="table-search" oninput="filterTable()"/>
+      </label>
+    </div>
+  </div>
+
+  <table class="data-table" id="sitin-table">
+    <thead>
+      <tr>
+        <th>ID Number</th>
+        <th>Name</th>
+        <th>Course</th>
+        <th>Purpose</th>
+        <th>Lab</th>
+        <th>Log In</th>
+        <th>Log Out</th>
+        <th>Date</th>
+        <th>Session</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for log in logs %}
+      <tr>
+        <td>{{ log.id_number }}</td>
+        <td>{{ log.first_name }} {{ log.last_name }}</td>
+        <td>{{ log.course or '—' }}</td>
+        <td>{{ log.purpose or '—' }}</td>
+        <td>{{ log.lab_room or '—' }}</td>
+        <td>{{ log.time_in[11:16] if log.time_in else '—' }}</td>
+        <td>{{ log.time_out[11:16] if log.time_out else '—' }}</td>
+        <td>{{ log.time_in[:10] if log.time_in else '—' }}</td>
+        <td>{{ log.sessions_remaining }}</td>
+        <td>
+          {% if log.status == 'Active' %}
+            <span class="status-active">Active</span>
+          {% else %}
+            <span class="status-done">Done</span>
+          {% endif %}
+        </td>
+        <td class="action-btns">
+          <form method="post" action="{{ url_for('admin_sitin_timeout', lid=log.id) }}" style="display:inline">
+            <button type="submit" class="btn-edit" {% if log.status != 'Active' %}disabled{% endif %}>Time Out</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="11" class="no-data">No records found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="table-count">Showing {{ logs|length }} record(s)</p>
+</div>
+{% endblock %}
+{% block extra_script %}
+<script>
+  function filterTable() {
+    const q = document.getElementById('sitin-search').value.toLowerCase();
+    document.querySelectorAll('#sitin-table tbody tr').forEach(r => {
+      r.style.display = r.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  }
+</script>
+{% endblock %}

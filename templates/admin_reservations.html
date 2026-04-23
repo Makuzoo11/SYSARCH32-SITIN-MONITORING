@@ -1,0 +1,181 @@
+{% extends "admin_base.html" %}
+{% block title %}Reservations - CCS Admin{% endblock %}
+{% block content %}
+<div class="page-card">
+  <h1 class="page-title">Student Reservations</h1>
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <span class="rec-count-badge">{{ reservations|length }} reservation(s)</span>
+    </div>
+    <div class="toolbar-right">
+      <label style="font-size:.85rem">Search:
+        <input type="text" id="res-search" class="table-search" oninput="filterRes()"/>
+      </label>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <table class="res-table-perfect">
+      <thead>
+        <tr>
+          <th class="col-id">ID</th>
+          <th class="col-name">Name</th>
+          <th class="col-course">Course</th>
+          <th class="col-purpose">Purpose</th>
+          <th class="col-lab">Lab</th>
+          <th class="col-time">Time</th>
+          <th class="col-date">Date</th>
+          <th class="col-sessions">Sessions</th>
+          <th class="col-status">Status</th>
+          <th class="col-actions">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in reservations %}
+        <tr>
+          <td class="col-id">{{ r.id_number }}</td>
+          <td class="col-name">{{ r.first_name }} {{ r.last_name }}</td>
+          <td class="col-course">{{ r.course or '-' }}</td>
+          <td class="col-purpose">{{ r.purpose or '-' }}</td>
+          <td class="col-lab">{{ r.lab_room or '-' }}</td>
+          <td class="col-time">{{ r.time_in[11:16] if r.time_in else '-' }}</td>
+          <td class="col-date">{{ r.time_in[:10] if r.time_in else '-' }}</td>
+          <td class="col-sessions">{{ r.sessions_remaining }}</td>
+          <td class="col-status">
+            {% if r.status == 'Pending' %}
+              <span class="status-pending">Pending</span>
+            {% elif r.status == 'Approved' %}
+              <span class="status-approved">Approved</span>
+            {% elif r.status == 'Denied' %}
+              <span class="status-denied">Denied</span>
+            {% else %}
+              <span class="status-done">Done</span>
+            {% endif %}
+          </td>
+          <td class="col-actions">
+            <div class="actions-bar">
+              {% if r.status == 'Pending' %}
+                <form method="post" action="{{ url_for('admin_reservation_approve', rid=r.id) }}" class="action-form">
+                  <input type="hidden" name="reasoning" value="Approved.">
+                  <button type="submit" class="action-btn approve" title="Approve">✓</button>
+                </form>
+                <form method="post" action="{{ url_for('admin_reservation_deny', rid=r.id) }}" class="action-form">
+                  <input type="hidden" name="reasoning" value="Denied.">
+                  <button type="submit" class="action-btn deny" title="Deny">✗</button>
+                </form>
+              {% endif %}
+              {% if r.status in ('Pending', 'Approved') %}
+                <form method="post" action="{{ url_for('admin_reservation_timeout', rid=r.id) }}" class="action-form">
+                  <button type="submit" class="action-btn timeout" title="Time Out">⏰</button>
+                </form>
+              {% endif %}
+              <form method="post" action="{{ url_for('admin_reservation_delete', rid=r.id) }}" class="action-form">
+                <button type="submit" class="action-btn delete" onclick="return confirm('Delete?')" title="Delete">🗑</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="10" class="no-data">No reservations.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<style>
+  .table-container { width:100%; overflow-x:auto; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,0.08); }
+  .res-table-perfect {
+    width:100%;
+    border-collapse:collapse;
+    font-size:.88rem;
+    background:#fff;
+    table-layout:fixed;
+  }
+  .res-table-perfect th, .res-table-perfect td {
+    padding:.8rem .6rem;
+    border-bottom:1px solid #e5e7eb;
+    border-right:1px solid #e5e7eb;
+    text-align:left;
+    vertical-align:middle;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .res-table-perfect th:last-child, .res-table-perfect td:last-child { border-right:none; }
+  .res-table-perfect th {
+    background:linear-gradient(to bottom, #f8fafc, #f1f5f9);
+    font-weight:600;
+    color:#374151;
+    position:sticky;
+    top:0;
+    z-index:10;
+  }
+  .res-table-perfect tr:nth-child(even) td { background:#fdfdfd; }
+  .res-table-perfect tr:hover td { background:#f3f4f6 !important; }
+  .col-id, .col-id th, .col-id td { width:8%; }
+  .col-name, .col-name th, .col-name td { width:14%; }
+  .col-course, .col-course th, .col-course td { width:8%; }
+  .col-purpose, .col-purpose th, .col-purpose td { width:12%; }
+  .col-lab, .col-lab th, .col-lab td { width:8%; }
+  .col-time, .col-time th, .col-time td { width:8%; }
+  .col-date, .col-date th, .col-date td { width:8%; }
+  .col-sessions, .col-sessions th, .col-sessions td { width:8%; }
+  .col-status, .col-status th, .col-status td { width:8%; }
+  .col-reason, .col-reason th, .col-reason td { width:12%; }
+  .col-actions, .col-actions th, .col-actions td { width:14%; }
+  .status-pending { background:#fef3c7; color:#d97706; padding:.25rem .5rem; border-radius:4px; font-size:.75rem; font-weight:600; display:inline-block; }
+  .status-approved { background:#d1fae5; color:#059669; padding:.25rem .5rem; border-radius:4px; font-size:.75rem; font-weight:600; display:inline-block; }
+  .status-denied { background:#fee2e2; color:#dc2626; padding:.25rem .5rem; border-radius:4px; font-size:.75rem; font-weight:600; display:inline-block; }
+  .status-done { background:#e5e7eb; color:#6b7280; padding:.25rem .5rem; border-radius:4px; font-size:.75rem; font-weight:600; display:inline-block; }
+  .actions-bar {
+    display:flex;
+    flex-direction:row;
+    align-items:center;
+    gap:3px;
+    flex-wrap:nowrap;
+    justify-content:flex-start;
+    width:100%;
+    height:100%;
+    padding:0;
+  }
+  .action-form {
+    margin:0;
+    padding:0;
+    display:inline-flex;
+  }
+  .action-btn {
+    width:28px;
+    height:28px;
+    border:none;
+    border-radius:4px;
+    font-size:.8rem;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transition:all .15s ease;
+    flex-shrink:0;
+  }
+  .action-btn.approve { background:#dcfce7; color:#166534; }
+  .action-btn.approve:hover { background:#bbf7d0; transform:translateY(-1px); box-shadow:0 2px 6px rgba(22,101,52,0.3); }
+  .action-btn.deny { background:#fecaca; color:#dc2626; }
+  .action-btn.deny:hover { background:#fca5a5; transform:translateY(-1px); box-shadow:0 2px 6px rgba(220,38,38,0.3); }
+  .action-btn.timeout { background:#dbeafe; color:#1e40af; }
+  .action-btn.timeout:hover { background:#bfdbfe; transform:translateY(-1px); box-shadow:0 2px 6px rgba(30,64,175,0.3); }
+  .action-btn.delete { background:#fee2e2; color:#dc2626; }
+  .action-btn.delete:hover { background:#fecaca; transform:translateY(-1px); box-shadow:0 2px 6px rgba(220,38,38,0.3); }
+  .no-data { text-align:center; color:#9ca3af; font-style:italic; padding:2rem; }
+  .table-container::-webkit-scrollbar { height:6px; }
+  .table-container::-webkit-scrollbar-thumb { background:rgba(71,85,105,0.4); border-radius:3px; }
+</style>
+
+<script>
+  function filterRes() {
+    const q = document.getElementById('res-search').value.toLowerCase();
+    document.querySelectorAll('#res-table tbody tr').forEach(row => {
+      row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  }
+</script>
+{% endblock %}

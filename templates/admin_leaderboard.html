@@ -1,0 +1,40 @@
+{% extends "admin_base.html" %}
+{% block title %}Admin Leaderboard - CCS{% endblock %}
+{% block content %}
+<div class="page-card">
+  <h1 class="page-title">Leaderboard Management</h1>
+  <p style="text-align:center;color:#6a7890;margin:-.4rem 0 1.2rem;">Ranking formula: earned points 50%, total sit-in hours 30%, completed tasks 20%.</p>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Rank</th>
+        <th>ID Number</th>
+        <th>Student</th>
+        <th>Course</th>
+        <th>Points</th>
+        <th>Hours</th>
+        <th>Tasks</th>
+        <th>Score</th>
+        <!-- Remarks commented out -->
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rankings %}
+      <tr>
+        <td>#{{ row.rank }}</td>
+        <td>{{ row.id_number }}</td>
+        <td>{{ row.first_name }} {{ row.last_name }}</td>
+        <td>{{ row.course or '-' }}</td>
+        <td>{{ row.reward_points }}</td>
+        <td>{{ row.total_hours }}</td>
+        <td>{{ row.completed_tasks }}</td>
+        <td>{{ row.leaderboard_score }}</td>
+        <!-- Remarks commented out -->
+      </tr>
+      {% else %}
+      <tr><td colspan="8" class="no-data">No leaderboard data yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

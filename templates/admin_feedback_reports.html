@@ -1,0 +1,59 @@
+{% extends "admin_base.html" %}
+{% block title %}Feedback Reports - CCS Admin{% endblock %}
+{% block content %}
+<div class="page-card">
+  <h1 class="page-title">Feedback Reports</h1>
+
+  <div class="rpt-summary">
+    <div class="rpt-stat-card">
+      <div class="rpt-stat-val">{{ stats.total_feedback }}</div>
+      <div class="rpt-stat-lbl">Total Feedback</div>
+    </div>
+    <div class="rpt-stat-card">
+      <div class="rpt-stat-val">{{ stats.avg_rating }}</div>
+      <div class="rpt-stat-lbl">Average Rating</div>
+    </div>
+    <div class="rpt-stat-card">
+      <div class="rpt-stat-val">{{ stats.with_comments }}</div>
+      <div class="rpt-stat-lbl">With Comments</div>
+    </div>
+  </div>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>ID Number</th>
+        <th>Student</th>
+        <th>Purpose</th>
+        <th>Lab</th>
+        <th>Rating</th>
+        <th>Feedback</th>
+        <th>Created</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in feedback_rows %}
+      <tr>
+        <td>{{ row.id_number }}</td>
+        <td>{{ row.first_name }} {{ row.last_name }}</td>
+        <td>{{ row.purpose or '-' }}</td>
+        <td>{{ row.lab_room or '-' }}</td>
+        <td>{{ row.rating }}/5</td>
+        <td style="white-space: normal; min-width: 320px;">{{ row.feedback_text or 'No written comment.' }}</td>
+        <td>{{ row.created_at[:16] }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="no-data">No feedback reports available.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<style>
+  .rpt-summary { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin-bottom:1.4rem; }
+  .rpt-stat-card { background:#fff; border:1px solid #d8e1ec; border-radius:14px; padding:1.1rem 1.2rem; text-align:center; box-shadow:0 2px 8px rgba(70,93,121,.05); }
+  .rpt-stat-val { font-size:2rem; font-weight:800; color:#19335c; line-height:1; }
+  .rpt-stat-lbl { font-size:.75rem; color:#7b88a0; font-weight:600; margin-top:.35rem; text-transform:uppercase; letter-spacing:.04em; }
+  @media (max-width:900px) { .rpt-summary { grid-template-columns:1fr; } }
+</style>
+{% endblock %}

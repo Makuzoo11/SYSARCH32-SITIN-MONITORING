@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+{% block title %}History - CCS Monitoring{% endblock %}
+{% block content %}
+<div class="page-wrap">
+  <h1 class="page-heading">Sit-in History and Feedback</h1>
+
+  <div class="hist-toolbar">
+    <div class="hist-toolbar-left">
+      <label class="hist-per-page">
+        <select id="per-page" onchange="changePerPage(this.value)">
+          <option value="10" {% if per_page==10 %}selected{% endif %}>10</option>
+          <option value="25" {% if per_page==25 %}selected{% endif %}>25</option>
+          <option value="50" {% if per_page==50 %}selected{% endif %}>50</option>
+        </select>
+        entries per page
+      </label>
+    </div>
+  </div>
+
+  <div class="hist-table-wrap">
+    <table class="hist-table">
+      <thead>
+        <tr>
+          <th>ID Number</th>
+          <th>Name</th>
+          <th>Purpose</th>
+          <th>Laboratory</th>
+          <th>Time In</th>
+          <th>Time Out</th>
+          <th>Status</th>
+          <th>Feedback</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td>{{ log.id_number }}</td>
+          <td>{{ log.first_name }} {{ log.last_name }}</td>
+          <td>{{ log.purpose or '-' }}</td>
+          <td>{{ log.lab_room or '-' }}</td>
+          <td>{{ log.time_in[:16] if log.time_in else '-' }}</td>
+          <td>{{ log.time_out[:16] if log.time_out else '-' }}</td>
+          <td>{{ log.status }}</td>
+          <td>
+            <div class="feedback-cell">
+              {% if log.feedback_text %}
+              <div class="feedback-preview">{{ log.rating }}/5 - {{ log.feedback_text }}</div>
+              {% else %}
+              <span class="hist-feedback-empty">No feedback yet</span>
+              {% endif %}
+              {% if log.status == 'Done' %}
+              <button class="hist-feedback-btn" onclick='openFeedbackModal({{ log.id }}, {{ (log.feedback_text or "") | tojson }}, {{ log.rating or 0 }})'>
+                {% if log.feedback_text %}Edit{% else %}Add{% endif %}
+              </button>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="hist-no-data">No data available</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="hist-pagination-row">
+    <span class="hist-count">
+      {% if total > 0 %}
+        Showing {{ (page-1)*per_page+1 }} to {{ [(page)*per_page, total]|min }} of {{ total }} entries
+      {% else %}
+        Showing 0 entries
+      {% endif %}
+    </span>
+    <div class="hist-pages">
+      <a class="hist-pg {% if page==1 %}disabled{% endif %}" href="{{ url_for('student_history', page=1, per_page=per_page, search=search) }}">First</a>
+      <a class="hist-pg {% if page==1 %}disabled{% endif %}" href="{{ url_for('student_history', page=page-1 if page>1 else 1, per_page=per_page, search=search) }}">Prev</a>
+      {% for p in range(1, total_pages+1) %}
+        <a class="hist-pg {% if p==page %}active{% endif %}" href="{{ url_for('student_history', page=p, per_page=per_page, search=search) }}">{{ p }}</a>
+      {% endfor %}
+      <a class="hist-pg {% if page==total_pages or total_pages==0 %}disabled{% endif %}" href="{{ url_for('student_history', page=page+1 if page<total_pages else total_pages, per_page=per_page, search=search) }}">Next</a>
+      <a class="hist-pg {% if page==total_pages or total_pages==0 %}disabled{% endif %}" href="{{ url_for('student_history', page=total_pages, per_page=per_page, search=search) }}">Last</a>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="feedback-modal" onclick="if(event.target.id=='feedback-modal')closeFeedbackModal()">
+  <div class="modal-box hist-modal">
+    <div class="modal-header">
+      <h3>Session Feedback</h3>
+      <button class="modal-close" onclick="closeFeedbackModal()">x</button>
+    </div>
+    <form id="feedback-form" method="post" action="#">
+      <div class="modal-body">
+        <div class="hist-form-field">
+          <label>Rating</label>
+          <select name="rating" id="feedback-rating" required>
+            <option value="5">5 - Excellent</option>
+            <option value="4">4 - Good</option>
+            <option value="3">3 - Fair</option>
+            <option value="2">2 - Needs Improvement</option>
+            <option value="1">1 - Poor</option>
+          </select>
+        </div>
+        <div class="hist-form-field">
+          <label>Feedback</label>
+          <textarea name="feedback_text" id="feedback-text" rows="5" placeholder="Share what went well and what can be improved." required></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-gray" onclick="closeFeedbackModal()">Cancel</button>
+        <button type="submit" class="btn-blue">Save Feedback</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+  .page-wrap { padding:1.5rem 1.8rem; max-width: 1280px; margin: 0 auto; }
+  .page-heading { font-size:1.9rem; font-weight:700; color:#19335c; text-align:center; margin-bottom:1.4rem; }
+  .hist-toolbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:.9rem; flex-wrap:wrap; gap:.6rem; }
+  .hist-per-page { font-size:.85rem; color:#555; display:flex; align-items:center; gap:.4rem; }
+  .hist-per-page select { padding:.3rem .5rem; border:1.5px solid #d8e1ec; border-radius:8px; font-size:.85rem; outline:none; }
+  .hist-table-wrap { overflow-x:auto; border-radius:16px; border:1px solid #d8e1ec; background:#fff; }
+  .hist-table { width:100%; border-collapse:collapse; font-size:.87rem; }
+  .hist-table thead tr { background:#19335c; color:#fff; }
+  .hist-table th { padding:.8rem 1rem; text-align:left; font-weight:600; font-size:.78rem; white-space:nowrap; text-transform: uppercase; letter-spacing: .08em; }
+  .hist-table td { padding:.85rem 1rem; border-bottom:1px solid #edf2f7; color:#334e68; vertical-align: top; }
+  .hist-table tbody tr:hover { background:#f8fbfe; }
+  .hist-no-data { text-align:center; color:#8aa; font-size:.88rem; padding:1.5rem; }
+  .feedback-cell { display:flex; flex-direction:column; gap:.45rem; min-width: 220px; }
+  .feedback-preview { font-size:.82rem; line-height:1.4; color:#455d75; }
+  .hist-feedback-empty { color:#8b97a8; font-size:.82rem; }
+  .hist-feedback-btn { align-self:flex-start; border:none; border-radius:999px; background:#19335c; color:#fff; padding:.35rem .75rem; font-size:.76rem; font-weight:700; cursor:pointer; }
+  .hist-pagination-row { display:flex; justify-content:space-between; align-items:center; margin-top:1rem; flex-wrap:wrap; gap:.5rem; }
+  .hist-count { font-size:.83rem; color:#6a7890; }
+  .hist-pages { display:flex; gap:.35rem; flex-wrap: wrap; }
+  .hist-pg { display:inline-flex; align-items:center; justify-content:center; min-width:34px; height:34px; padding:0 .65rem; border-radius:8px; font-size:.83rem; font-weight:600; text-decoration:none; color:#365f9a; background:#e9f0f8; }
+  .hist-pg.active { background:#19335c; color:#fff; }
+  .hist-pg.disabled { opacity:.35; pointer-events:none; }
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(24, 20, 46, .52);
+    backdrop-filter: blur(5px);
+    z-index: 9000;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box {
+    width: 100%;
+    max-width: 520px;
+    background: #fff;
+    border: 1px solid #d8e1ec;
+    border-radius: 18px;
+    box-shadow: 0 24px 60px rgba(31, 51, 84, 0.22);
+    overflow: hidden;
+  }
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.15rem .9rem;
+    border-bottom: 1px solid #edf2f7;
+    background: linear-gradient(180deg, #f8fbfe 0%, #f1f6fb 100%);
+  }
+  .modal-header h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #19335c;
+  }
+  .modal-close {
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 50%;
+    background: #e8eff7;
+    color: #365f9a;
+    font-size: .95rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-close:hover { background: #d9e5f2; }
+  .modal-body { padding: 1.15rem; }
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: .65rem;
+    padding: .95rem 1.15rem 1.1rem;
+    border-top: 1px solid #edf2f7;
+    background: #fbfdff;
+  }
+  .btn-gray, .btn-blue {
+    border: none;
+    border-radius: 10px;
+    padding: .65rem 1rem;
+    font: inherit;
+    font-size: .86rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .btn-gray {
+    background: #eaf0f7;
+    color: #556b86;
+  }
+  .btn-gray:hover { background: #dde7f1; }
+  .btn-blue {
+    background: #19335c;
+    color: #fff;
+    box-shadow: 0 10px 24px rgba(25, 51, 92, .18);
+  }
+  .btn-blue:hover { background: #254877; }
+  .hist-modal { max-width: 520px; }
+  .hist-form-field { display:flex; flex-direction:column; gap:.35rem; margin-bottom:.9rem; }
+  .hist-form-field label { font-size:.8rem; font-weight:700; color:#6a7890; text-transform: uppercase; letter-spacing: .08em; }
+  .hist-form-field select, .hist-form-field textarea {
+    width: 100%;
+    border: 1.5px solid #d8e1ec;
+    border-radius: 12px;
+    padding: .75rem .9rem;
+    font: inherit;
+    background: #fff;
+    color: #243b53;
+    outline: none;
+  }
+  .hist-form-field select:focus, .hist-form-field textarea:focus {
+    border-color: #365f9a;
+    box-shadow: 0 0 0 4px rgba(54, 95, 154, .12);
+  }
+</style>
+
+<script>
+  function changePerPage(val) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('per_page', val);
+    url.searchParams.set('page', 1);
+    window.location.href = url.toString();
+  }
+  function openFeedbackModal(id, feedbackText, rating) {
+    document.getElementById('feedback-form').action = '/history/feedback/' + id;
+    document.getElementById('feedback-text').value = feedbackText || '';
+    document.getElementById('feedback-rating').value = rating && rating !== '0' ? rating : '5';
+    document.getElementById('feedback-modal').classList.add('open');
+  }
+  function closeFeedbackModal() {
+    document.getElementById('feedback-modal').classList.remove('open');
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}CCS Admin{% endblock %}</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/icon.png') }}"/>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='combined_admin.css') }}"/>
+</head>
+<body class="admin-body">
+
+<nav class="admin-nav">
+  <a class="admin-brand" href="{{ url_for('admin_dashboard') }}">
+    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo" style="width:32px;height:32px;object-fit:contain;flex-shrink:0;"/>
+    <span>College of Computer Studies Admin</span>
+  </a>
+  <ul class="admin-nav-links">
+    <li><a href="{{ url_for('admin_dashboard') }}" {% if request.endpoint=='admin_dashboard' %}class="active"{% endif %}>Home</a></li>
+    <li><a href="#" onclick="openModal('search-modal');return false;">Search</a></li>
+    <li><a href="{{ url_for('admin_students') }}" {% if request.endpoint=='admin_students' %}class="active"{% endif %}>Students</a></li>
+    <li><a href="#" onclick="openFreshSitinModal();return false;">Sit-in</a></li>
+    <li><a href="{{ url_for('admin_sitin_records') }}" {% if request.endpoint=='admin_sitin_records' %}class="active"{% endif %}>View Sit-in Records</a></li>
+    <li><a href="{{ url_for('admin_sitin_reports') }}" {% if request.endpoint=='admin_sitin_reports' %}class="active"{% endif %}>Sit-in Reports</a></li>
+    <li><a href="{{ url_for('admin_feedback_reports') }}" {% if request.endpoint=='admin_feedback_reports' %}class="active"{% endif %}>Feedback Reports</a></li>
+    <li><a href="{{ url_for('admin_reservations') }}" {% if request.endpoint=='admin_reservations' %}class="active"{% endif %}>Reservation</a></li>
+    <li><a href="{{ url_for('admin_leaderboard') }}" {% if request.endpoint=='admin_leaderboard' %}class="active"{% endif %}>Leaderboard</a></li>
+    <li><a href="{{ url_for('logout') }}" class="btn-logout">Log out</a></li>
+  </ul>
+</nav>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-wrap">
+      {% for cat, msg in messages %}
+        <div class="flash {{ cat }}">{{ msg }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+<main class="admin-main">
+  {% block content %}{% endblock %}
+</main>
+
+<!-- SEARCH MODAL -->
+<div class="modal-overlay" id="search-modal" onclick="if(event.target.id=='search-modal')closeModal('search-modal')">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>Search Student</h3>
+      <button class="modal-close" onclick="closeModal('search-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="text" id="search-input" placeholder="Search by name or ID..." class="modal-input" oninput="doSearch()"/>
+      <div id="search-results" class="search-results"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-gray" onclick="closeModal('search-modal')">Cancel</button>
+      <button class="btn-blue" onclick="doSearch()">Search</button>
+    </div>
+  </div>
+</div>
+
+<!-- SIT-IN FORM MODAL -->
+<div class="modal-overlay" id="sitin-modal" onclick="if(event.target.id=='sitin-modal')closeModal('sitin-modal')">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>Sit In Form</h3>
+      <button class="modal-close" onclick="closeModal('sitin-modal')">×</button>
+    </div>
+    <form method="post" action="{{ url_for('admin_sitin_add') }}">
+      <div class="modal-body">
+        <div class="sitin-row">
+          <span class="sitin-label">ID Number:</span>
+          <div style="display:flex;flex-direction:column;gap:4px;flex:1;position:relative;">
+            <input type="text" name="id_number" id="sf-id-input" class="sitin-input"
+                   placeholder="Enter ID Number" required oninput="lookupStudent(this.value)" autocomplete="off"/>
+            <div id="sf-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;border:1.5px solid #ede9f8;border-radius:8px;margin-top:2px;max-height:160px;overflow-y:auto;background:#fff;box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:9999;"></div>
+          </div>
+        </div>
+        <div class="sitin-row">
+          <span class="sitin-label">Student Name:</span>
+          <span id="sf-name" class="sitin-val" style="font-size:.88rem;"></span>
+        </div>
+        <div class="sitin-row">
+          <span class="sitin-label">Purpose:</span>
+          <select name="purpose" id="sf-purpose" class="sitin-input" required>
+            <option value="">-- Select Purpose --</option>
+            <option value="C Programming">C Programming</option>
+            <option value="Java">Java</option>
+            <option value="C#">C#</option>
+            <option value=".Net">.Net</option>
+            <option value="Database">Database</option>
+            <option value="Research">Research</option>
+            <option value="Others">Others</option>
+          </select>
+        </div>
+        <div class="sitin-row">
+          <span class="sitin-label">Lab:</span>
+          <select name="lab" id="sf-lab" class="sitin-input">
+            <option value="">-- Select Lab --</option>
+            <option value="524">524</option>
+            <option value="526">526</option>
+            <option value="544">544</option>
+            <option value="530">530</option>
+          </select>
+        </div>
+        <div class="sitin-row">
+          <span class="sitin-label">Remaining Session:</span>
+          <span id="sf-sessions" class="sitin-val"></span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-gray" onclick="closeModal('sitin-modal')">Close</button>
+        <button type="submit" class="btn-blue">Sit in</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openModal(id)  { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+  function openFreshSitinModal() {
+    document.getElementById('sf-id-input').value       = '';
+    document.getElementById('sf-name').textContent     = '';
+    document.getElementById('sf-name').style.color     = '#888';
+    document.getElementById('sf-sessions').textContent = '';
+    document.getElementById('sf-purpose').value        = '';
+    document.getElementById('sf-lab').value            = '';
+    closeModal('search-modal');
+    openModal('sitin-modal');
+  }
+
+  function openSitinModal(data) {
+    document.getElementById('sf-id-input').value       = data.id_number;
+    document.getElementById('sf-name').textContent     = data.first_name + ' ' + data.last_name;
+    document.getElementById('sf-name').style.color     = '#1e2535';
+    document.getElementById('sf-sessions').textContent = data.sessions_remaining;
+    document.getElementById('sf-purpose').value        = '';
+    document.getElementById('sf-lab').value            = '';
+    closeModal('search-modal');
+    openModal('sitin-modal');
+  }
+
+  async function lookupStudent(idNum) {
+    const nameEl     = document.getElementById('sf-name');
+    const sessionsEl = document.getElementById('sf-sessions');
+    const suggestEl  = document.getElementById('sf-suggestions');
+    if (!idNum.trim()) {
+      nameEl.textContent = ''; sessionsEl.textContent = '';
+      suggestEl.innerHTML = ''; suggestEl.style.display = 'none'; return;
+    }
+    const res  = await fetch('/admin/search?q=' + encodeURIComponent(idNum));
+    const data = await res.json();
+    const exact = data.find(s => s.id_number === idNum.trim());
+    if (exact) {
+      nameEl.textContent = exact.first_name + ' ' + exact.last_name;
+      nameEl.style.color = '#1e2535';
+      sessionsEl.textContent = exact.sessions_remaining;
+      suggestEl.innerHTML = ''; suggestEl.style.display = 'none'; return;
+    }
+    if (data.length > 0) {
+      nameEl.textContent = ''; sessionsEl.textContent = '';
+      suggestEl.style.display = 'block';
+      suggestEl.innerHTML = data.map(s => `
+        <div class="sf-suggest-item" onclick="selectStudent('${s.id_number}','${s.first_name}','${s.last_name}',${s.sessions_remaining})">
+          <strong>${s.id_number}</strong> — ${s.first_name} ${s.last_name}
+          <span style="color:#aaa;font-size:.75rem;margin-left:.3rem;">${s.course||''}</span>
+        </div>`).join('');
+    } else {
+      suggestEl.innerHTML = '<div style="padding:.5rem;color:#aaa;font-size:.82rem;">No students found</div>';
+      suggestEl.style.display = 'block';
+      nameEl.textContent = ''; sessionsEl.textContent = '';
+    }
+  }
+
+  function selectStudent(id, first, last, sessions) {
+    document.getElementById('sf-id-input').value       = id;
+    document.getElementById('sf-name').textContent     = first + ' ' + last;
+    document.getElementById('sf-name').style.color     = '#1e2535';
+    document.getElementById('sf-sessions').textContent = sessions;
+    document.getElementById('sf-suggestions').style.display = 'none';
+    document.getElementById('sf-suggestions').innerHTML = '';
+  }
+
+  async function doSearch() {
+    const q  = document.getElementById('search-input').value.trim();
+    const el = document.getElementById('search-results');
+    if (!q) { el.innerHTML = ''; return; }
+    const res  = await fetch('/admin/search?q=' + encodeURIComponent(q));
+    const data = await res.json();
+    if (!data.length) { el.innerHTML = '<p class="no-results">No students found.</p>'; return; }
+    el.innerHTML = data.map(s => `
+      <div class="search-result-item" onclick='openSitinModal(${JSON.stringify(s)})'>
+        <strong>${s.id_number}</strong> — ${s.first_name} ${s.last_name}
+        <span class="result-course">${s.course||''}</span>
+      </div>`).join('');
+  }
+</script>
+{% block extra_script %}{% endblock %}
+<script>
+  document.querySelectorAll(".flash").forEach(function(el) {
+    setTimeout(function() {
+      el.style.transition = "opacity .6s ease, transform .6s ease";
+      el.style.opacity = "0"; el.style.transform = "translateY(-6px)";
+      setTimeout(function() { el.remove(); }, 600);
+    }, 3000);
+  });
+</script>
+<style>
+  .sf-suggest-item { padding:.5rem .8rem; cursor:pointer; font-size:.84rem; border-bottom:1px solid #f0eefa; transition:background .15s; }
+  .sf-suggest-item:last-child { border-bottom:none; }
+  .sf-suggest-item:hover { background:#f0eefa; }
+</style>
+</body>
+</html>

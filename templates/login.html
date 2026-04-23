@@ -1,10 +1,22 @@
 {% extends "base.html" %}
 {% block title %}Login – CCS Monitoring{% endblock %}
 {% block content %}
+<style>
+body {
+  background-image: url('/static/images/login-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+.login-main {
+  background: none !important;
+}
+</style>
 <div class="login-main">
   <div class="login-card">
     <div class="logo-area">
-      <img src="{{ url_for('static', filename='images/logo.png') }}" alt="CCS Logo" style="width:190px;height:190px;object-fit:contain;"/>
+      <img src="{{ url_for('static', filename='images/logo.png') }}" alt="CCS Logo" style="width:140px;height:140px;object-fit:contain;"/>
     </div>
     <div class="form-side">
       <form method="post" action="{{ url_for('login') }}">

@@ -19,7 +19,7 @@
     <li><a href="{{ url_for('admin_dashboard') }}" {% if request.endpoint=='admin_dashboard' %}class="active"{% endif %}>Home</a></li>
     <li><a href="#" onclick="openModal('search-modal');return false;">Search</a></li>
     <li><a href="{{ url_for('admin_students') }}" {% if request.endpoint=='admin_students' %}class="active"{% endif %}>Students</a></li>
-    <li><a href="#" onclick="openFreshSitinModal();return false;">Sit-in</a></li>
+    <li><a href="#" onclick="openFreshSitinModal();return false;" role="button" aria-haspopup="dialog">Sit-in</a></li>
     <li><a href="{{ url_for('admin_sitin_records') }}" {% if request.endpoint=='admin_sitin_records' %}class="active"{% endif %}>View Sit-in Records</a></li>
     <li><a href="{{ url_for('admin_sitin_reports') }}" {% if request.endpoint=='admin_sitin_reports' %}class="active"{% endif %}>Sit-in Reports</a></li>
     <li><a href="{{ url_for('admin_feedback_reports') }}" {% if request.endpoint=='admin_feedback_reports' %}class="active"{% endif %}>Feedback Reports</a></li>
@@ -65,10 +65,11 @@
 <div class="modal-overlay" id="sitin-modal" onclick="if(event.target.id=='sitin-modal')closeModal('sitin-modal')">
   <div class="modal-box">
     <div class="modal-header">
-      <h3>Sit In Form</h3>
+      <h3>Sit In Request</h3>
       <button class="modal-close" onclick="closeModal('sitin-modal')">×</button>
     </div>
     <form method="post" action="{{ url_for('admin_sitin_add') }}">
+      <input type="hidden" name="next" id="sf-next" value=""/>
       <div class="modal-body">
         <div class="sitin-row">
           <span class="sitin-label">ID Number:</span>
@@ -106,13 +107,22 @@
           </select>
         </div>
         <div class="sitin-row">
+          <span class="sitin-label">PC:</span>
+          <select name="pc_number" id="sf-pc" class="sitin-input" required>
+            <option value="">-- Select PC --</option>
+            {% for pc in range(1, 41) %}
+              <option value="{{ pc }}">PC {{ pc }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="sitin-row">
           <span class="sitin-label">Remaining Session:</span>
           <span id="sf-sessions" class="sitin-val"></span>
         </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn-gray" onclick="closeModal('sitin-modal')">Close</button>
-        <button type="submit" class="btn-blue">Sit in</button>
+        <button type="submit" class="btn-blue">Submit</button>
       </div>
     </form>
   </div>
@@ -123,23 +133,27 @@
   function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
   function openFreshSitinModal() {
+    document.getElementById('sf-next').value = window.location.pathname + window.location.search;
     document.getElementById('sf-id-input').value       = '';
     document.getElementById('sf-name').textContent     = '';
     document.getElementById('sf-name').style.color     = '#888';
     document.getElementById('sf-sessions').textContent = '';
     document.getElementById('sf-purpose').value        = '';
     document.getElementById('sf-lab').value            = '';
+    document.getElementById('sf-pc').value             = '';
     closeModal('search-modal');
     openModal('sitin-modal');
   }
 
   function openSitinModal(data) {
+    document.getElementById('sf-next').value = window.location.pathname + window.location.search;
     document.getElementById('sf-id-input').value       = data.id_number;
     document.getElementById('sf-name').textContent     = data.first_name + ' ' + data.last_name;
     document.getElementById('sf-name').style.color     = '#1e2535';
     document.getElementById('sf-sessions').textContent = data.sessions_remaining;
     document.getElementById('sf-purpose').value        = '';
     document.getElementById('sf-lab').value            = '';
+    document.getElementById('sf-pc').value             = '';
     closeModal('search-modal');
     openModal('sitin-modal');
   }

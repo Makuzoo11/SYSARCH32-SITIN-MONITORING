@@ -25,6 +25,7 @@
           <th>Name</th>
           <th>Purpose</th>
           <th>Laboratory</th>
+          <th>PC</th>
           <th>Time In</th>
           <th>Time Out</th>
           <th>Status</th>
@@ -38,9 +39,20 @@
           <td>{{ log.first_name }} {{ log.last_name }}</td>
           <td>{{ log.purpose or '-' }}</td>
           <td>{{ log.lab_room or '-' }}</td>
+          <td>{{ log.pc_number or '-' }}</td>
           <td>{{ log.time_in[:16] if log.time_in else '-' }}</td>
           <td>{{ log.time_out[:16] if log.time_out else '-' }}</td>
-          <td>{{ log.status }}</td>
+          <td>
+            {% if log.status == 'Active' %}
+              <span class="hist-status hist-status-active">Currently in use</span>
+            {% elif log.status == 'Pending' %}
+              <span class="hist-status hist-status-pending">Pending</span>
+            {% elif log.status == 'Approved' %}
+              <span class="hist-status hist-status-approved">Reserved</span>
+            {% else %}
+              <span class="hist-status hist-status-done">Done</span>
+            {% endif %}
+          </td>
           <td>
             <div class="feedback-cell">
               {% if log.feedback_text %}
@@ -57,7 +69,7 @@
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="8" class="hist-no-data">No data available</td></tr>
+        <tr><td colspan="9" class="hist-no-data">No data available</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -131,6 +143,11 @@
   .feedback-preview { font-size:.82rem; line-height:1.4; color:#455d75; }
   .hist-feedback-empty { color:#8b97a8; font-size:.82rem; }
   .hist-feedback-btn { align-self:flex-start; border:none; border-radius:999px; background:#19335c; color:#fff; padding:.35rem .75rem; font-size:.76rem; font-weight:700; cursor:pointer; }
+  .hist-status { display:inline-flex; align-items:center; padding:.25rem .6rem; border-radius:999px; font-size:.74rem; font-weight:700; }
+  .hist-status-active { background:#dcfce7; color:#166534; }
+  .hist-status-pending { background:#fef3c7; color:#92400e; }
+  .hist-status-approved { background:#dbeafe; color:#1e40af; }
+  .hist-status-done { background:#e5e7eb; color:#6b7280; }
   .hist-pagination-row { display:flex; justify-content:space-between; align-items:center; margin-top:1rem; flex-wrap:wrap; gap:.5rem; }
   .hist-count { font-size:.83rem; color:#6a7890; }
   .hist-pages { display:flex; gap:.35rem; flex-wrap: wrap; }

@@ -15,7 +15,7 @@
   </div>
 
   <div class="table-container">
-    <table class="res-table-perfect">
+    <table class="res-table-perfect" id="res-table">
       <thead>
         <tr>
           <th class="col-id">ID</th>
@@ -23,6 +23,7 @@
           <th class="col-course">Course</th>
           <th class="col-purpose">Purpose</th>
           <th class="col-lab">Lab</th>
+          <th class="col-pc">PC</th>
           <th class="col-time">Time</th>
           <th class="col-date">Date</th>
           <th class="col-sessions">Sessions</th>
@@ -38,6 +39,7 @@
           <td class="col-course">{{ r.course or '-' }}</td>
           <td class="col-purpose">{{ r.purpose or '-' }}</td>
           <td class="col-lab">{{ r.lab_room or '-' }}</td>
+          <td class="col-pc">{{ r.pc_number or '-' }}</td>
           <td class="col-time">{{ r.time_in[11:16] if r.time_in else '-' }}</td>
           <td class="col-date">{{ r.time_in[:10] if r.time_in else '-' }}</td>
           <td class="col-sessions">{{ r.sessions_remaining }}</td>
@@ -45,7 +47,9 @@
             {% if r.status == 'Pending' %}
               <span class="status-pending">Pending</span>
             {% elif r.status == 'Approved' %}
-              <span class="status-approved">Approved</span>
+              <span class="status-approved">Reserved</span>
+            {% elif r.status == 'Active' %}
+              <span class="status-approved">Active</span>
             {% elif r.status == 'Denied' %}
               <span class="status-denied">Denied</span>
             {% else %}
@@ -57,26 +61,50 @@
               {% if r.status == 'Pending' %}
                 <form method="post" action="{{ url_for('admin_reservation_approve', rid=r.id) }}" class="action-form">
                   <input type="hidden" name="reasoning" value="Approved.">
-                  <button type="submit" class="action-btn approve" title="Approve">✓</button>
+                  <button type="submit" class="action-btn approve" title="Approve" aria-label="Approve reservation">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 22a10 10 0 1 0-10-10A10 10 0 0 0 12 22Z"/>
+                      <path d="m8.5 12.5 2.6 2.6 4.9-5"/>
+                    </svg>
+                  </button>
                 </form>
                 <form method="post" action="{{ url_for('admin_reservation_deny', rid=r.id) }}" class="action-form">
                   <input type="hidden" name="reasoning" value="Denied.">
-                  <button type="submit" class="action-btn deny" title="Deny">✗</button>
+                  <button type="submit" class="action-btn deny" title="Deny" aria-label="Deny reservation">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 22a10 10 0 1 0-10-10A10 10 0 0 0 12 22Z"/>
+                      <path d="M8.5 8.5 15.5 15.5"/>
+                      <path d="M15.5 8.5 8.5 15.5"/>
+                    </svg>
+                  </button>
                 </form>
               {% endif %}
-              {% if r.status in ('Pending', 'Approved') %}
+              {% if r.status in ('Approved', 'Active') %}
                 <form method="post" action="{{ url_for('admin_reservation_timeout', rid=r.id) }}" class="action-form">
-                  <button type="submit" class="action-btn timeout" title="Time Out">⏰</button>
+                  <button type="submit" class="action-btn timeout" title="Time Out" aria-label="Mark reservation as timed out">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <circle cx="12" cy="12" r="9"/>
+                      <path d="M12 7v5l3 2"/>
+                    </svg>
+                  </button>
                 </form>
               {% endif %}
               <form method="post" action="{{ url_for('admin_reservation_delete', rid=r.id) }}" class="action-form">
-                <button type="submit" class="action-btn delete" onclick="return confirm('Delete?')" title="Delete">🗑</button>
+                <button type="submit" class="action-btn delete" onclick="return confirm('Delete?')" title="Delete" aria-label="Delete reservation">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 6h18"/>
+                    <path d="M8 6V4.5A1.5 1.5 0 0 1 9.5 3h5A1.5 1.5 0 0 1 16 4.5V6"/>
+                    <path d="M6 6l1 14.25A1.5 1.5 0 0 0 8.5 22h7a1.5 1.5 0 0 0 1.5-1.75L18 6"/>
+                    <path d="M10 10v7"/>
+                    <path d="M14 10v7"/>
+                  </svg>
+                </button>
               </form>
             </div>
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="10" class="no-data">No reservations.</td></tr>
+        <tr><td colspan="11" class="no-data">No reservations.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -118,11 +146,11 @@
   .col-course, .col-course th, .col-course td { width:8%; }
   .col-purpose, .col-purpose th, .col-purpose td { width:12%; }
   .col-lab, .col-lab th, .col-lab td { width:8%; }
+  .col-pc, .col-pc th, .col-pc td { width:7%; }
   .col-time, .col-time th, .col-time td { width:8%; }
   .col-date, .col-date th, .col-date td { width:8%; }
   .col-sessions, .col-sessions th, .col-sessions td { width:8%; }
   .col-status, .col-status th, .col-status td { width:8%; }
-  .col-reason, .col-reason th, .col-reason td { width:12%; }
   .col-actions, .col-actions th, .col-actions td { width:14%; }
   .status-pending { background:#fef3c7; color:#d97706; padding:.25rem .5rem; border-radius:4px; font-size:.75rem; font-weight:600; display:inline-block; }
   .status-approved { background:#d1fae5; color:#059669; padding:.25rem .5rem; border-radius:4px; font-size:.75rem; font-weight:600; display:inline-block; }
@@ -145,26 +173,36 @@
     display:inline-flex;
   }
   .action-btn {
-    width:28px;
-    height:28px;
+    width:32px;
+    height:32px;
     border:none;
-    border-radius:4px;
-    font-size:.8rem;
+    border-radius:10px;
     cursor:pointer;
     display:flex;
     align-items:center;
     justify-content:center;
-    transition:all .15s ease;
+    line-height:0;
+    transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
     flex-shrink:0;
   }
+  .action-btn svg {
+    width:16px;
+    height:16px;
+    fill:none;
+    stroke: currentColor;
+    stroke-width:1.9;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+    display:block;
+  }
   .action-btn.approve { background:#dcfce7; color:#166534; }
-  .action-btn.approve:hover { background:#bbf7d0; transform:translateY(-1px); box-shadow:0 2px 6px rgba(22,101,52,0.3); }
+  .action-btn.approve:hover { background:#bbf7d0; transform:translateY(-1px); box-shadow:0 4px 10px rgba(22,101,52,0.18); }
   .action-btn.deny { background:#fecaca; color:#dc2626; }
-  .action-btn.deny:hover { background:#fca5a5; transform:translateY(-1px); box-shadow:0 2px 6px rgba(220,38,38,0.3); }
+  .action-btn.deny:hover { background:#fca5a5; transform:translateY(-1px); box-shadow:0 4px 10px rgba(220,38,38,0.18); }
   .action-btn.timeout { background:#dbeafe; color:#1e40af; }
-  .action-btn.timeout:hover { background:#bfdbfe; transform:translateY(-1px); box-shadow:0 2px 6px rgba(30,64,175,0.3); }
+  .action-btn.timeout:hover { background:#bfdbfe; transform:translateY(-1px); box-shadow:0 4px 10px rgba(30,64,175,0.18); }
   .action-btn.delete { background:#fee2e2; color:#dc2626; }
-  .action-btn.delete:hover { background:#fecaca; transform:translateY(-1px); box-shadow:0 2px 6px rgba(220,38,38,0.3); }
+  .action-btn.delete:hover { background:#fecaca; transform:translateY(-1px); box-shadow:0 4px 10px rgba(220,38,38,0.18); }
   .no-data { text-align:center; color:#9ca3af; font-style:italic; padding:2rem; }
   .table-container::-webkit-scrollbar { height:6px; }
   .table-container::-webkit-scrollbar-thumb { background:rgba(71,85,105,0.4); border-radius:3px; }

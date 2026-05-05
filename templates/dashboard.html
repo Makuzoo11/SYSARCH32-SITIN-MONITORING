@@ -23,6 +23,37 @@
     </div>
   </section>
 
+  <section class="student-card current-session-panel">
+    <div class="section-head">
+      <h3>Current Session</h3>
+      <a href="{{ url_for('student_reservation') }}">Open reservation</a>
+    </div>
+    {% if current_session %}
+      <div class="current-session-grid">
+        <div class="current-session-item">
+          <span>Laboratory</span>
+          <strong>Lab {{ current_session.lab_room }}</strong>
+        </div>
+        <div class="current-session-item">
+          <span>PC</span>
+          <strong>PC {{ current_session.pc_number or 'N/A' }}</strong>
+        </div>
+        <div class="current-session-item">
+          <span>Status</span>
+          <strong class="session-status {% if current_session.status == 'Active' %}is-active{% else %}is-reserved{% endif %}">
+          {% if current_session.status == 'Active' %}
+            Currently in use
+            {% else %}
+              Reserved
+            {% endif %}
+          </strong>
+        </div>
+      </div>
+    {% else %}
+      <p class="empty-note">No active laboratory session right now.</p>
+    {% endif %}
+  </section>
+
   <div class="student-grid">
     <div class="left-stack">
       <section class="student-card profile-panel">
@@ -228,6 +259,32 @@
     padding: 1.2rem;
     box-shadow: 0 10px 30px rgba(70, 93, 121, 0.08);
   }
+  .current-session-panel { margin-top: 1.1rem; }
+  .current-session-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .8rem;
+  }
+  .current-session-item {
+    padding: .85rem .95rem;
+    border-radius: 14px;
+    border: 1px solid #d8e1ec;
+    background: #f8fbff;
+  }
+  .current-session-item span {
+    display: block;
+    font-size: .74rem;
+    color: #7b88a0;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin-bottom: .3rem;
+  }
+  .current-session-item strong {
+    color: #19335c;
+    font-size: .95rem;
+  }
+  .session-status.is-active { color: #0f7a3a; }
+  .session-status.is-reserved { color: #9a6700; }
   .profile-top { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.2rem; }
   .profile-avatar-form { margin: 0; }
   .profile-avatar { width: 76px; height: 76px; border-radius: 24px; background: linear-gradient(135deg, #d4a720, #e8c86b); display: flex; align-items: center; justify-content: center; overflow: hidden; color: #19335c; font-weight: 800; font-size: 1.4rem; }

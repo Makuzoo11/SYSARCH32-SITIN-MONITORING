@@ -10,11 +10,15 @@ UPLOAD_FOLDER = os.path.join('static', 'images')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 DB = 'monitoring.db'
+LAB_ROOMS = ['524', '526', '530', '544']
+PC_COUNT = 40
 
 # ─── HELPERS ──────────────────────────────────────────────
 def get_db():
-    conn = sqlite3.connect(DB)
+    conn = sqlite3.connect(DB, timeout=30)
     conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA foreign_keys = ON')
+    conn.execute('PRAGMA busy_timeout = 30000')
     return conn
 
 def hash_pw(pw):
@@ -101,11 +105,107 @@ def dashboard_notifications(conn, user_id, limit=6):
         (user_id, limit)
     ).fetchall()
 
+def lab_options():
+    return LAB_ROOMS
+
+def pc_options():
+    return [str(i) for i in range(1, PC_COUNT + 1)]
+
+def normalize_lab_room(value):
+    value = (value or '').strip()
+    return value if value in LAB_ROOMS else ''
+
+def normalize_pc_number(value):
+    value = (value or '').strip()
+    return value if value in pc_options() else ''
+
+def build_lab_pc_map(conn):
+    status_map = {
+        lab: {
+            pc: {
+                'state': 'available',
+                'label': 'Available',
+                'log_id': None,
+                'student_name': '',
+                'id_number': '',
+                'status': '',
+            }
+            for pc in pc_options()
+        }
+        for lab in LAB_ROOMS
+    }
+    priority = {'available': 0, 'reserved': 1, 'in_use': 2}
+
+    rows = conn.execute('''
+        SELECT s.id, s.lab_room, s.pc_number, s.status, s.source,
+               u.first_name, u.last_name, u.id_number
+        FROM sit_in_logs s
+        JOIN users u ON u.id = s.user_id
+        WHERE COALESCE(s.source, 'admin') != 'login'
+          AND TRIM(COALESCE(s.lab_room, '')) != ''
+          AND TRIM(COALESCE(s.pc_number, '')) != ''
+          AND s.status IN ('Pending', 'Approved', 'Active')
+    ''').fetchall()
+
+    for row in rows:
+        lab = normalize_lab_room(row['lab_room'])
+        pc = normalize_pc_number(row['pc_number'])
+        if not lab or not pc:
+            continue
+        state = 'in_use' if row['status'] == 'Active' else 'reserved'
+        label = 'Currently in use' if state == 'in_use' else 'Reserved'
+        current = status_map[lab][pc]
+        if priority[state] >= priority[current['state']]:
+            status_map[lab][pc] = {
+                'state': state,
+                'label': label,
+                'log_id': row['id'],
+                'student_name': f"{row['first_name']} {row['last_name']}",
+                'id_number': row['id_number'],
+                'status': row['status'],
+            }
+
+    return status_map
+
+def pc_is_available(conn, lab_room, pc_number, ignore_log_id=None):
+    lab_room = normalize_lab_room(lab_room)
+    pc_number = normalize_pc_number(pc_number)
+    if not lab_room or not pc_number:
+        return False
+
+    query = '''
+        SELECT id
+        FROM sit_in_logs
+        WHERE lab_room=?
+          AND pc_number=?
+          AND status IN ('Pending', 'Approved', 'Active')
+          AND COALESCE(source, 'admin') != 'login'
+    '''
+    params = [lab_room, pc_number]
+    if ignore_log_id is not None:
+        query += ' AND id != ?'
+        params.append(ignore_log_id)
+
+    row = conn.execute(query, params).fetchone()
+    return row is None
+
+def delete_sitin_log_dependents(conn, log_id):
+    conn.execute("DELETE FROM feedback WHERE sit_in_log_id=?", (log_id,))
+    conn.execute("DELETE FROM reasoning_logs WHERE sit_in_log_id=?", (log_id,))
+
 def admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if not session.get('is_admin'):
             return redirect(url_for('login'))
+        if request.endpoint != 'force_change_password':
+            conn = get_db()
+            try:
+                user = fetch_user(conn, session.get('user_id'))
+            finally:
+                conn.close()
+            if user and user['must_change_password']:
+                return redirect(url_for('force_change_password'))
         return f(*args, **kwargs)
     return decorated
 
@@ -114,6 +214,14 @@ def login_required(f):
     def decorated(*args, **kwargs):
         if 'user_id' not in session:
             return redirect(url_for('login'))
+        if request.endpoint != 'force_change_password':
+            conn = get_db()
+            try:
+                user = fetch_user(conn, session.get('user_id'))
+            finally:
+                conn.close()
+            if user and not user['is_admin'] and user['must_change_password']:
+                return redirect(url_for('force_change_password'))
         return f(*args, **kwargs)
     return decorated
 
@@ -160,6 +268,7 @@ def init_db():
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id     INTEGER NOT NULL,
             lab_room    TEXT DEFAULT '',
+            pc_number   TEXT DEFAULT '',
             purpose     TEXT DEFAULT '',
             time_in     DATETIME DEFAULT CURRENT_TIMESTAMP,
             time_out    DATETIME,
@@ -270,6 +379,12 @@ def init_db():
         pass
 
     try:
+        conn.execute("ALTER TABLE sit_in_logs ADD COLUMN pc_number TEXT DEFAULT ''")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass
+
+    try:
         conn.execute("ALTER TABLE sit_in_logs ADD COLUMN request_reason TEXT DEFAULT ''")
         conn.commit()
     except sqlite3.OperationalError:
@@ -294,7 +409,6 @@ def init_db():
     conn.commit()
     conn.close()
 
-# ─── AUTH ─────────────────────────────────────────────────
 @app.route('/')
 def index():
     return redirect(url_for('login'))
@@ -314,7 +428,6 @@ def login():
             session['user_id']  = user['id']
             session['name']     = f"{user['first_name']} {user['last_name']}"
             session['is_admin'] = bool(user['is_admin'])
-            # Force password change for admin-created students on first login
             if not user['is_admin'] and user['must_change_password']:
                 return redirect(url_for('force_change_password'))
             return redirect(url_for('admin_dashboard') if user['is_admin'] else url_for('dashboard'))
@@ -351,10 +464,32 @@ def register():
 
 @app.route('/logout')
 def logout():
+    user_id = session.get('user_id')
+    if user_id:
+        conn = get_db()
+        try:
+            user = conn.execute("SELECT id, is_admin FROM users WHERE id=?", (user_id,)).fetchone()
+            if user and not user['is_admin']:
+                for _ in range(3):
+                    try:
+                        conn.execute('''
+                            UPDATE sit_in_logs
+                            SET status='Done',
+                                time_out=COALESCE(time_out, CURRENT_TIMESTAMP)
+                            WHERE user_id=?
+                              AND status IN ('Pending', 'Approved', 'Active')
+                        ''', (user_id,))
+                        conn.commit()
+                        break
+                    except sqlite3.OperationalError as exc:
+                        if 'locked' not in str(exc).lower():
+                            raise
+                        conn.rollback()
+        finally:
+            conn.close()
     session.clear()
     return redirect(url_for('login'))
 
-# ─── FORCE PASSWORD CHANGE ───────────────────────────────
 @app.route('/change-password', methods=['GET', 'POST'])
 @login_required
 def force_change_password():
@@ -384,6 +519,15 @@ def force_change_password():
 def dashboard():
     conn = get_db()
     user = fetch_user(conn, session['user_id'])
+    current_session = conn.execute('''
+        SELECT s.lab_room, s.pc_number, s.status, s.time_in, s.time_out
+        FROM sit_in_logs s
+        WHERE s.user_id=?
+          AND s.status IN ('Pending', 'Approved', 'Active')
+          AND COALESCE(s.source, 'admin') != 'login'
+        ORDER BY s.time_in DESC
+        LIMIT 1
+    ''', (session['user_id'],)).fetchone()
     logs = conn.execute('''
         SELECT s.*, f.rating, f.feedback_text
         FROM sit_in_logs s
@@ -408,6 +552,7 @@ def dashboard():
         notifications=notifications,
         leaderboard=leaderboard,
         pending_requests=pending_requests,
+        current_session=current_session,
         logo=get_logo()
     )
 
@@ -511,7 +656,7 @@ def admin_dashboard():
         'total_students':  conn.execute("SELECT COUNT(*) FROM users WHERE is_admin=0").fetchone()[0],
         'currently_sitin': conn.execute("SELECT COUNT(*) FROM sit_in_logs WHERE status='Active' AND COALESCE(source, 'admin') != 'login'").fetchone()[0],
         'total_sitin':     conn.execute("SELECT COUNT(*) FROM sit_in_logs WHERE COALESCE(source, 'admin') != 'login'").fetchone()[0],
-        'pending_requests': conn.execute("SELECT COUNT(*) FROM sit_in_logs WHERE source='student' AND status='Pending'").fetchone()[0],
+        'pending_requests': conn.execute("SELECT COUNT(*) FROM sit_in_logs WHERE status='Pending' AND COALESCE(source, 'admin') != 'login'").fetchone()[0],
         'feedback_entries': conn.execute("SELECT COUNT(*) FROM feedback").fetchone()[0],
     }
     announcements = conn.execute("SELECT * FROM announcements ORDER BY created_at DESC").fetchall()
@@ -651,9 +796,23 @@ def admin_edit_student(uid):
 @admin_required
 def admin_delete_student(uid):
     conn = get_db()
-    conn.execute("DELETE FROM sit_in_logs WHERE user_id=?", (uid,))
-    conn.execute("DELETE FROM users WHERE id=?", (uid,))
-    conn.commit()
+    try:
+        log_ids = [row['id'] for row in conn.execute("SELECT id FROM sit_in_logs WHERE user_id=?", (uid,)).fetchall()]
+        if log_ids:
+            placeholders = ','.join('?' for _ in log_ids)
+            conn.execute(f"DELETE FROM feedback WHERE sit_in_log_id IN ({placeholders})", log_ids)
+            conn.execute(f"DELETE FROM reasoning_logs WHERE sit_in_log_id IN ({placeholders})", log_ids)
+        conn.execute("DELETE FROM reasoning_logs WHERE student_id=?", (uid,))
+        conn.execute("DELETE FROM notifications WHERE user_id=?", (uid,))
+        conn.execute("DELETE FROM feedback WHERE user_id=?", (uid,))
+        conn.execute("DELETE FROM sit_in_logs WHERE user_id=?", (uid,))
+        conn.execute("DELETE FROM users WHERE id=?", (uid,))
+        conn.commit()
+    except sqlite3.IntegrityError:
+        conn.rollback()
+        flash('Could not delete the student because related records are still linked.', 'error')
+        conn.close()
+        return redirect(url_for('admin_students'))
     conn.close()
     flash('Student deleted.', 'success')
     return redirect(url_for('admin_students'))
@@ -692,29 +851,48 @@ def admin_sitin():
                            FROM sit_in_logs s JOIN users u ON s.user_id=u.id
                            WHERE s.source = 'admin'
                            ORDER BY s.time_in DESC''').fetchall()]
+    booking_map = build_lab_pc_map(conn)
     conn.close()
-    return render_template('admin_sitin.html', logs=logs, logo=get_logo())
+    return render_template(
+        'admin_sitin.html',
+        logs=logs,
+        labs=lab_options(),
+        pcs=pc_options(),
+        booking_map=booking_map,
+        logo=get_logo()
+    )
 
 @app.route('/admin/sitin/add', methods=['POST'])
 @admin_required
 def admin_sitin_add():
     id_num  = request.form.get('id_number','').strip()
     purpose = request.form.get('purpose','').strip()
-    lab     = request.form.get('lab','').strip()
+    lab     = normalize_lab_room(request.form.get('lab',''))
+    pc      = normalize_pc_number(request.form.get('pc_number',''))
+    next_url = request.form.get('next', '').strip()
+    if not next_url.startswith('/'):
+        next_url = ''
     conn    = get_db()
     user    = conn.execute("SELECT * FROM users WHERE id_number=?", (id_num,)).fetchone()
     if not user:
         flash('Student not found.', 'error')
     elif user['sessions_remaining'] <= 0:
         flash('No sessions remaining.', 'error')
+    elif not lab:
+        flash('Please choose a valid laboratory.', 'error')
+    elif not pc:
+        flash('Please choose a valid PC.', 'error')
+    elif not pc_is_available(conn, lab, pc):
+        flash(f'Lab {lab} PC {pc} is already reserved or in use.', 'error')
     else:
-        conn.execute("INSERT INTO sit_in_logs (user_id,lab_room,purpose,status,source) VALUES (?,?,?,'Active','admin')",
-                     (user['id'],lab,purpose))
-        conn.execute("UPDATE users SET sessions_remaining=sessions_remaining-1 WHERE id=?", (user['id'],))
+        conn.execute(
+            "INSERT INTO sit_in_logs (user_id,lab_room,pc_number,purpose,status,source) VALUES (?,?,?,?, 'Pending', 'admin')",
+            (user['id'], lab, pc, purpose)
+        )
         conn.commit()
-        flash('Sit-in recorded.', 'success')
+        flash('Sit-in request submitted for admin approval.', 'success')
     conn.close()
-    return redirect(url_for('admin_sitin'))
+    return redirect(next_url or request.referrer or url_for('admin_dashboard'))
 
 @app.route('/admin/sitin/timeout/<int:lid>', methods=['POST'])
 @admin_required
@@ -739,6 +917,7 @@ def admin_sitin_timeout(lid):
 @admin_required
 def admin_sitin_delete(lid):
     conn = get_db()
+    delete_sitin_log_dependents(conn, lid)
     conn.execute("DELETE FROM sit_in_logs WHERE id=?", (lid,))
     conn.commit()
     conn.close()
@@ -761,8 +940,8 @@ def student_history():
                   WHERE s.user_id=? AND s.source != 'login' '''
     params   = [session['user_id']]
     if search:
-        base_q += ' AND (u.id_number LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ? OR s.purpose LIKE ? OR s.lab_room LIKE ?)'
-        params += [f'%{search}%']*5
+        base_q += ' AND (u.id_number LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ? OR s.purpose LIKE ? OR s.lab_room LIKE ? OR s.pc_number LIKE ?)'
+        params += [f'%{search}%']*6
     total    = conn.execute(f'SELECT COUNT(*) FROM ({base_q})', params).fetchone()[0]
     logs     = [dict(r) for r in conn.execute(base_q + ' ORDER BY s.time_in DESC LIMIT ? OFFSET ?', params + [per_page, offset]).fetchall()]
     conn.close()
@@ -774,6 +953,7 @@ def student_history():
 @login_required
 def student_delete_history(lid):
     conn = get_db()
+    delete_sitin_log_dependents(conn, lid)
     conn.execute('DELETE FROM sit_in_logs WHERE id=? AND user_id=?', (lid, session['user_id']))
     conn.commit()
     conn.close()
@@ -813,31 +993,49 @@ def submit_history_feedback(lid):
     flash('Feedback saved.', 'success')
     return redirect(url_for('student_history'))
 
-# ─── STUDENT RESERVATION ──────────────────────────────────
 @app.route('/reservation', methods=['GET','POST'])
 @login_required
 def student_reservation():
     conn = get_db()
     user = conn.execute('SELECT * FROM users WHERE id=?', (session['user_id'],)).fetchone()
+    labs = lab_options()
+    pcs = pc_options()
+    booking_map = build_lab_pc_map(conn)
+    current_active = conn.execute('''
+        SELECT lab_room, pc_number, status
+        FROM sit_in_logs
+        WHERE user_id=?
+          AND status='Active'
+          AND COALESCE(source, 'admin') != 'login'
+        ORDER BY time_in DESC
+        LIMIT 1
+    ''', (session['user_id'],)).fetchone()
+    selected_lab = ''
+    selected_pc = ''
     if request.method == 'POST':
         purpose  = request.form.get('purpose','').strip()
-        lab      = request.form.get('lab','').strip()
+        lab      = normalize_lab_room(request.form.get('lab',''))
+        pc       = normalize_pc_number(request.form.get('pc_number',''))
         time_in  = request.form.get('time_in','').strip()
         date     = request.form.get('date','').strip()
-        if not purpose or not lab or not time_in or not date:
+        selected_lab = lab
+        selected_pc = pc
+        if not purpose or not lab or not pc or not time_in or not date:
             flash('Please complete all reservation fields.', 'error')
+        elif not pc_is_available(conn, lab, pc):
+            flash(f'Lab {lab} PC {pc} is already reserved or in use.', 'error')
         else:
             time_in_dt = f"{date} {time_in}:00"
             conn.execute(
-                "INSERT INTO sit_in_logs (user_id,purpose,lab_room,time_in,status,source) VALUES (?,?,?,?,'Pending','student')",
-                (user['id'], purpose, lab, time_in_dt)
+                "INSERT INTO sit_in_logs (user_id,purpose,lab_room,pc_number,time_in,status,source) VALUES (?,?,?,?,?,'Pending','student')",
+                (user['id'], purpose, lab, pc, time_in_dt)
             )
             conn.execute("UPDATE users SET reward_points=reward_points+5 WHERE id=?", (user['id'],))
             extra_sessions, remaining_points = convert_reservation_points(user['id'], conn)
             create_notification(
                 user['id'],
                 'Reservation submitted',
-                f'Your reservation for Lab {lab} is pending admin approval.',
+                f'Your reservation for Lab {lab}, PC {pc} is pending admin approval.',
                 'info',
                 conn
             )
@@ -849,7 +1047,18 @@ def student_reservation():
             conn.close()
             return redirect(url_for('student_reservation'))
     conn.close()
-    return render_template('reservation.html', user=user, logo=get_logo())
+    return render_template(
+        'reservation.html',
+        user=user,
+        labs=labs,
+        pcs=pcs,
+        booking_map=booking_map,
+        current_active_lab=current_active['lab_room'] if current_active else '',
+        current_active_pc=current_active['pc_number'] if current_active else '',
+        selected_lab=selected_lab,
+        selected_pc=selected_pc,
+        logo=get_logo()
+    )
 
 # ─── ADMIN RESERVATIONS ──────────────────────────────────
 @app.route('/admin/reservations')
@@ -860,7 +1069,7 @@ def admin_reservations():
         SELECT s.*, u.id_number, u.first_name, u.last_name, u.course,
                u.sessions_remaining, u.reservation_points, u.reward_points, u.completed_tasks
         FROM sit_in_logs s JOIN users u ON s.user_id=u.id
-        WHERE s.source = 'student'
+        WHERE s.status = 'Pending' AND COALESCE(s.source, 'admin') != 'login'
         ORDER BY s.time_in DESC
     ''').fetchall()]
     conn.close()
@@ -870,24 +1079,29 @@ def admin_reservations():
 @admin_required
 def admin_reservation_approve(rid):
     conn = get_db()
-    reasoning = request.form.get('reasoning', '').strip() or 'Reservation approved after admin review.'
-    log = conn.execute("SELECT * FROM sit_in_logs WHERE id=? AND source='student'", (rid,)).fetchone()
+    reasoning = request.form.get('reasoning', '').strip() or 'Reservation approved and activated after admin review.'
+    log = conn.execute("SELECT * FROM sit_in_logs WHERE id=? AND status='Pending'", (rid,)).fetchone()
     if log:
         conn.execute(
-            "UPDATE sit_in_logs SET status='Approved', request_reason=? WHERE id=?",
+            "UPDATE sit_in_logs SET status='Active', request_reason=? WHERE id=?",
             (reasoning, rid)
         )
+        if log['source'] == 'admin':
+            conn.execute(
+                "UPDATE users SET sessions_remaining=sessions_remaining-1 WHERE id=? AND sessions_remaining > 0",
+                (log['user_id'],)
+            )
         log_reasoning(session['user_id'], log['user_id'], rid, 'approve', reasoning, conn)
         create_notification(
             log['user_id'],
-            'Reservation approved',
+            'Reservation active',
             reasoning,
             'success',
             conn
         )
     conn.commit()
     conn.close()
-    flash('Reservation approved.', 'success')
+    flash('Reservation activated.', 'success')
     return redirect(url_for('admin_reservations'))
 
 @app.route('/admin/reservations/deny/<int:rid>', methods=['POST'])
@@ -895,7 +1109,7 @@ def admin_reservation_approve(rid):
 def admin_reservation_deny(rid):
     conn = get_db()
     reasoning = request.form.get('reasoning', '').strip() or 'Reservation denied after admin review.'
-    log = conn.execute("SELECT * FROM sit_in_logs WHERE id=? AND source='student'", (rid,)).fetchone()
+    log = conn.execute("SELECT * FROM sit_in_logs WHERE id=? AND status='Pending'", (rid,)).fetchone()
     if log:
         conn.execute(
             "UPDATE sit_in_logs SET status='Denied', time_out=CURRENT_TIMESTAMP, request_reason=? WHERE id=?",
@@ -937,6 +1151,7 @@ def admin_reservation_timeout(rid):
 @admin_required
 def admin_reservation_delete(rid):
     conn = get_db()
+    delete_sitin_log_dependents(conn, rid)
     conn.execute('DELETE FROM sit_in_logs WHERE id=?', (rid,))
     conn.commit()
     conn.close()
@@ -956,14 +1171,14 @@ def admin_sitin_records():
     params = []
     count_q += " AND COALESCE(s.source, 'admin') != 'login'"
     if search:
-        count_q += ' AND (u.id_number LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ? OR s.purpose LIKE ? OR s.lab_room LIKE ?)'
-        params = [f'%{search}%'] * 5
+        count_q += ' AND (u.id_number LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ? OR s.purpose LIKE ? OR s.lab_room LIKE ? OR s.pc_number LIKE ?)'
+        params = [f'%{search}%'] * 6
     total = conn.execute(count_q, params).fetchone()[0]
     logs_q = '''SELECT s.*, u.id_number, u.first_name, u.last_name, u.course
                 FROM sit_in_logs s JOIN users u ON s.user_id=u.id WHERE 1=1'''
     logs_q += " AND COALESCE(s.source, 'admin') != 'login'"
     if search:
-        logs_q += ' AND (u.id_number LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ? OR s.purpose LIKE ? OR s.lab_room LIKE ?)'
+        logs_q += ' AND (u.id_number LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ? OR s.purpose LIKE ? OR s.lab_room LIKE ? OR s.pc_number LIKE ?)'
     logs_q += ' ORDER BY s.time_in DESC LIMIT ? OFFSET ?'
     logs = [dict(r) for r in conn.execute(logs_q, params + [per_page, offset]).fetchall()]
     conn.close()
@@ -1011,7 +1226,7 @@ def admin_sitin_reports():
         GROUP BY DATE(time_in) ORDER BY day
     ''').fetchall()]
     recent = [dict(r) for r in conn.execute('''
-        SELECT s.id, u.id_number, u.id_number as name, s.lab_room, s.purpose, s.time_in, s.time_out, s.status
+        SELECT s.id, u.id_number, u.id_number as name, s.lab_room, s.pc_number, s.purpose, s.time_in, s.time_out, s.status
         FROM sit_in_logs s JOIN users u ON s.user_id=u.id
         WHERE COALESCE(s.source, 'admin') != 'login'
         ORDER BY s.time_in DESC LIMIT 20

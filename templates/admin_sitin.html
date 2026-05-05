@@ -1,5 +1,5 @@
 {% extends "admin_base.html" %}
-{% block title %}View Sit-in Records – CCS Admin{% endblock %}
+{% block title %}View Sit-in Records - CCS Admin{% endblock %}
 {% block content %}
 <div class="page-card">
   <h1 class="page-title">View Sit-in Records</h1>
@@ -22,6 +22,7 @@
         <th>Course</th>
         <th>Purpose</th>
         <th>Lab</th>
+        <th>PC</th>
         <th>Log In</th>
         <th>Log Out</th>
         <th>Date</th>
@@ -35,28 +36,35 @@
       <tr>
         <td>{{ log.id_number }}</td>
         <td>{{ log.first_name }} {{ log.last_name }}</td>
-        <td>{{ log.course or '—' }}</td>
-        <td>{{ log.purpose or '—' }}</td>
-        <td>{{ log.lab_room or '—' }}</td>
-        <td>{{ log.time_in[11:16] if log.time_in else '—' }}</td>
-        <td>{{ log.time_out[11:16] if log.time_out else '—' }}</td>
-        <td>{{ log.time_in[:10] if log.time_in else '—' }}</td>
+        <td>{{ log.course or '-' }}</td>
+        <td>{{ log.purpose or '-' }}</td>
+        <td>{{ log.lab_room or '-' }}</td>
+        <td>{{ log.pc_number or '-' }}</td>
+        <td>{{ log.time_in[11:16] if log.time_in else '-' }}</td>
+        <td>{{ log.time_out[11:16] if log.time_out else '-' }}</td>
+        <td>{{ log.time_in[:10] if log.time_in else '-' }}</td>
         <td>{{ log.sessions_remaining }}</td>
         <td>
           {% if log.status == 'Active' %}
             <span class="status-active">Active</span>
+          {% elif log.status in ['Pending', 'Approved'] %}
+            <span class="status-pending">Reserved</span>
           {% else %}
             <span class="status-done">Done</span>
           {% endif %}
         </td>
         <td class="action-btns">
-          <form method="post" action="{{ url_for('admin_sitin_timeout', lid=log.id) }}" style="display:inline">
-            <button type="submit" class="btn-edit" {% if log.status != 'Active' %}disabled{% endif %}>Time Out</button>
-          </form>
+          {% if log.status == 'Active' %}
+            <form method="post" action="{{ url_for('admin_sitin_timeout', lid=log.id) }}" style="display:inline">
+              <button type="submit" class="btn-edit">Time Out</button>
+            </form>
+          {% else %}
+            <span class="action-muted">No action</span>
+          {% endif %}
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="11" class="no-data">No records found.</td></tr>
+      <tr><td colspan="12" class="no-data">No records found.</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -72,4 +80,24 @@
     });
   }
 </script>
+<style>
+  .status-pending {
+    background: #fef3c7;
+    color: #92400e;
+    padding: .25rem .7rem;
+    border-radius: 20px;
+    font-size: .75rem;
+    font-weight: 700;
+  }
+  .action-muted {
+    display:inline-flex;
+    align-items:center;
+    padding:.35rem .65rem;
+    border-radius:20px;
+    background:#eef2f7;
+    color:#64748b;
+    font-size:.78rem;
+    font-weight:700;
+  }
+</style>
 {% endblock %}

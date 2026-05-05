@@ -1,10 +1,10 @@
 {% extends "admin_base.html" %}
-{% block title %}Sit-in Records – CCS Admin{% endblock %}
+{% block title %}Sit-in Records - CCS Admin{% endblock %}
 {% block content %}
 <div class="page-card">
   <h1 class="page-title">Sit-in Records</h1>
 
-<table class="res-table-perfect">
+  <table class="res-table-perfect">
     <thead>
       <tr>
         <th class="col-id">ID</th>
@@ -12,6 +12,7 @@
         <th class="col-course">Course</th>
         <th class="col-purpose">Purpose</th>
         <th class="col-lab">Lab</th>
+        <th class="col-pc">PC</th>
         <th class="col-time">Time In</th>
         <th class="col-sessions">Date</th>
         <th class="col-status">Status</th>
@@ -22,76 +23,71 @@
       <tr>
         <td>{{ log.id_number }}</td>
         <td>{{ log.first_name }} {{ log.last_name }}</td>
-        <td>{{ log.course or '—' }}</td>
-        <td>{{ log.purpose or '—' }}</td>
-        <td>{{ log.lab_room or '—' }}</td>
-        <td>{{ log.time_in[11:16] if log.time_in else '—' }}</td>
-        <td>{{ log.time_in[:10] if log.time_in else '—' }}</td>
+        <td>{{ log.course or '-' }}</td>
+        <td>{{ log.purpose or '-' }}</td>
+        <td>{{ log.lab_room or '-' }}</td>
+        <td>{{ log.pc_number or '-' }}</td>
+        <td>{{ log.time_in[11:16] if log.time_in else '-' }}</td>
+        <td>{{ log.time_in[:10] if log.time_in else '-' }}</td>
         <td>
-          {% if log.status in ['Active','Approved'] %}
+          {% if log.status == 'Active' %}
             <span class="status-active">Active</span>
+          {% elif log.status in ['Pending', 'Approved'] %}
+            <span class="status-pending">Reserved</span>
           {% else %}
             <span class="status-done">Done</span>
           {% endif %}
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="8" class="no-data">No records found.</td></tr>
+      <tr><td colspan="9" class="no-data">No records found.</td></tr>
       {% endfor %}
     </tbody>
   </table>
 
-  <!-- Pagination -->
   <style>
-    .status-approved {
-      background: #d1fae5;
-      color: #065f46;
+    .status-pending {
+      background: #fef3c7;
+      color: #92400e;
       padding: .25rem .7rem;
       border-radius: 20px;
       font-size: .75rem;
       font-weight: 700;
     }
+    .col-pc, .col-pc th, .col-pc td { width: 8%; }
   </style>
+
   <div class="records-pagination">
     <span class="table-count">
       {% if total > 0 %}
-        Showing {{ (page-1)*per_page+1 }}–{{ [page*per_page, total]|min }} of {{ total }} record(s)
+        Showing {{ (page-1)*per_page+1 }}-{{ [page*per_page, total]|min }} of {{ total }} record(s)
       {% else %}
         No records
       {% endif %}
     </span>
     <div class="pg-btns">
       <a class="pg-btn {% if page==1 %}disabled{% endif %}"
-         href="{{ url_for('admin_sitin_records', page=1, per_page=per_page, search=search) }}">«</a>
+         href="{{ url_for('admin_sitin_records', page=1, per_page=per_page, search=search) }}">First</a>
       <a class="pg-btn {% if page==1 %}disabled{% endif %}"
-         href="{{ url_for('admin_sitin_records', page=page-1 if page>1 else 1, per_page=per_page, search=search) }}">‹</a>
+         href="{{ url_for('admin_sitin_records', page=page-1 if page>1 else 1, per_page=per_page, search=search) }}">Prev</a>
       {% for p in range(1, total_pages+1) %}
         <a class="pg-btn {% if p==page %}active{% endif %}"
            href="{{ url_for('admin_sitin_records', page=p, per_page=per_page, search=search) }}">{{ p }}</a>
       {% endfor %}
       <a class="pg-btn {% if page>=total_pages %}disabled{% endif %}"
-         href="{{ url_for('admin_sitin_records', page=page+1 if page<total_pages else total_pages, per_page=per_page, search=search) }}">›</a>
+         href="{{ url_for('admin_sitin_records', page=page+1 if page<total_pages else total_pages, per_page=per_page, search=search) }}">Next</a>
       <a class="pg-btn {% if page>=total_pages %}disabled{% endif %}"
-         href="{{ url_for('admin_sitin_records', page=total_pages, per_page=per_page, search=search) }}">»</a>
+         href="{{ url_for('admin_sitin_records', page=total_pages, per_page=per_page, search=search) }}">Last</a>
     </div>
   </div>
 </div>
 
 <style>
   .records-pagination { display:flex; justify-content:space-between; align-items:center; margin-top:1rem; flex-wrap:wrap; gap:.5rem; }
-  .pg-btns { display:flex; gap:.3rem; }
+  .pg-btns { display:flex; gap:.3rem; flex-wrap: wrap; }
   .pg-btn { display:inline-flex; align-items:center; justify-content:center; min-width:30px; height:30px; padding:0 .5rem; border-radius:6px; font-size:.82rem; font-weight:600; text-decoration:none; color:#6c3fc5; background:#f0eefa; transition:all .18s; }
   .pg-btn.active   { background:#6c3fc5; color:#fff; }
   .pg-btn.disabled { opacity:.35; pointer-events:none; }
   .pg-btn:hover:not(.active):not(.disabled) { background:#e0d5f8; }
 </style>
-
-<script>
-  function changePerPage(val) {
-    const url = new URL(window.location.href);
-    url.searchParams.set('per_page', val);
-    url.searchParams.set('page', 1);
-    window.location.href = url.toString();
-  }
-</script>
 {% endblock %}

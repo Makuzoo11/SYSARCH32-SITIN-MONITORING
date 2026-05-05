@@ -1,14 +1,19 @@
 {% extends "base.html" %}
-{% block title %}Reservation – CCS Monitoring{% endblock %}
+{% block title %}Reservation - CCS Monitoring{% endblock %}
 {% block content %}
 <div class="res-wrap">
   <div class="res-card">
-    <h1 class="res-title">Reservation</h1>
-    <p class="res-subtitle">Fill in the details below to reserve a lab session.</p>
+    {% set initial_lab = selected_lab or labs[0] %}
+    <div class="res-head">
+      <div>
+        <h1 class="res-title">Laboratory Booking</h1>
+        <p class="res-subtitle">The PC layout loads by default. Switch laboratories anytime and pick an open PC.</p>
+      </div>
+      <div class="res-pill">40-PC seat map</div>
+    </div>
 
-    <form method="post" action="{{ url_for('student_reservation') }}">
+    <form method="post" action="{{ url_for('student_reservation') }}" onsubmit="return validatePcSelection()">
       <div class="res-fields">
-
         <div class="res-field">
           <label class="res-label">ID Number</label>
           <input type="text" class="res-input res-readonly" value="{{ user.id_number }}" readonly/>
@@ -36,12 +41,10 @@
 
         <div class="res-field">
           <label class="res-label">Laboratory</label>
-          <select name="lab" class="res-input" required>
-            <option value="">-- Select Lab --</option>
-            <option value="524">524</option>
-            <option value="526">526</option>
-            <option value="544">544</option>
-            <option value="530">530</option>
+          <select name="lab" id="lab-select" class="res-input" required onchange="renderPcGrid()">
+            {% for lab in labs %}
+              <option value="{{ lab }}" {% if initial_lab == lab %}selected{% endif %}>Lab {{ lab }}</option>
+            {% endfor %}
           </select>
         </div>
 
@@ -56,6 +59,33 @@
           </div>
         </div>
 
+        <div class="pc-panel">
+          <div class="pc-panel-head">
+            <div>
+              <h3>PC Availability</h3>
+              <p id="pc-hint">Select a lab to view the full seat map.</p>
+            </div>
+            <div class="pc-selected" id="selected-pc-label">
+              {% if initial_lab and selected_pc %}
+                Selected: Lab {{ initial_lab }} / PC {{ selected_pc }}
+              {% elif initial_lab %}
+                Lab {{ initial_lab }} selected. Pick an open PC.
+              {% else %}
+                No PC selected
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="pc-legend">
+            <span><i class="legend-box legend-available"></i> Available</span>
+            <span><i class="legend-box legend-reserved"></i> Reserved</span>
+            <span><i class="legend-box legend-inuse"></i> Currently in use</span>
+          </div>
+
+          <input type="hidden" name="pc_number" id="pc-number-input" value="{{ selected_pc }}" data-lab="{{ initial_lab }}"/>
+          <div class="pc-grid" id="pc-grid"></div>
+        </div>
+
         <div class="res-field">
           <label class="res-label">Remaining Sessions</label>
           <input type="text" class="res-input res-readonly" value="{{ user.sessions_remaining }}" readonly/>
@@ -64,17 +94,116 @@
         <div class="res-field">
           <label class="res-label">Total Points</label>
           <input type="text" class="res-input res-readonly" value="{{ user.reservation_points }}" readonly/>
-          <small style="font-size:.8rem;color:#8a8a8a;">Points are tracked for leaderboard and rewards.</small>
+          <small class="res-note">Points are tracked for leaderboard and rewards.</small>
         </div>
-
       </div>
 
       <div class="res-footer">
-        <button type="submit" class="res-btn-reserve">Submit</button>
+        <button type="submit" class="res-btn-reserve">Submit Reservation</button>
       </div>
     </form>
   </div>
 </div>
+
+<script>
+  const bookingMap = {{ booking_map | tojson }};
+  const pcNumbers = {{ pcs | tojson }};
+  const currentActiveLab = {{ current_active_lab | tojson }};
+  const currentActivePc = {{ current_active_pc | tojson }};
+  const initialLab = {{ initial_lab | tojson }};
+
+  function renderPcGrid() {
+    const labSelect = document.getElementById('lab-select');
+    const lab = labSelect.value || initialLab;
+    const grid = document.getElementById('pc-grid');
+    const hint = document.getElementById('pc-hint');
+    const selectedPcInput = document.getElementById('pc-number-input');
+    const selectedPcLabel = document.getElementById('selected-pc-label');
+
+    if (!labSelect.value && initialLab) {
+      labSelect.value = initialLab;
+    }
+
+    if (selectedPcInput.dataset.lab !== lab) {
+      selectedPcInput.value = '';
+    }
+    selectedPcInput.dataset.lab = lab;
+
+    const labBookings = bookingMap[lab] || {};
+    if (!selectedPcInput.value) {
+      selectedPcLabel.textContent = `Lab ${lab} selected. Pick an open PC.`;
+    } else {
+      selectedPcLabel.textContent = `Selected: Lab ${lab} / PC ${selectedPcInput.value}`;
+    }
+
+    hint.textContent = `Showing PC 1 to PC ${pcNumbers.length} for Lab ${lab}.`;
+    grid.innerHTML = pcNumbers.map(function(pc) {
+      const info = labBookings[pc] || { state: 'available', label: 'Available' };
+      const stateClass = info.state === 'in_use' ? 'in-use' : (info.state === 'reserved' ? 'reserved' : 'available');
+      const isSelected = selectedPcInput.value === pc;
+      const isDisabled = info.state !== 'available';
+      const isOwnActive = info.state === 'in_use' && String(currentActiveLab) === String(lab) && String(currentActivePc) === String(pc);
+      const displayLabel = isOwnActive ? 'Currently in use' : info.label;
+      return `
+        <button type="button"
+                class="pc-seat ${stateClass} ${isSelected ? 'selected' : ''}"
+                data-pc="${pc}"
+                data-state="${info.state}"
+                ${isDisabled ? 'disabled' : ''}
+                onclick="choosePc('${pc}')">
+          <strong>PC ${pc}</strong>
+          <span>${displayLabel}</span>
+        </button>
+      `;
+    }).join('');
+  }
+
+  function choosePc(pc) {
+    const lab = document.getElementById('lab-select').value;
+    const labBookings = bookingMap[lab] || {};
+    const info = labBookings[pc] || { state: 'available', label: 'Available' };
+
+    if (!lab) return;
+    if (info.state !== 'available') {
+      const isOwnActive = info.state === 'in_use' && String(currentActiveLab) === String(lab) && String(currentActivePc) === String(pc);
+      document.getElementById('selected-pc-label').textContent = isOwnActive
+        ? `PC ${pc} is currently in use by you.`
+        : `PC ${pc} is ${info.label.toLowerCase()}.`;
+      return;
+    }
+
+    document.getElementById('pc-number-input').value = pc;
+    document.getElementById('pc-number-input').dataset.lab = lab;
+    document.getElementById('selected-pc-label').textContent = `Selected: Lab ${lab} / PC ${pc}`;
+    renderPcGrid();
+  }
+
+  function validatePcSelection() {
+    const lab = document.getElementById('lab-select').value;
+    const pc = document.getElementById('pc-number-input').value;
+    if (!lab) {
+      alert('Please choose a laboratory.');
+      return false;
+    }
+    if (!pc) {
+      alert('Please choose an available PC.');
+      return false;
+    }
+    return true;
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    if (!document.getElementById('lab-select').value && initialLab) {
+      document.getElementById('lab-select').value = initialLab;
+    }
+    renderPcGrid();
+    const lab = document.getElementById('lab-select').value;
+    const pc = document.getElementById('pc-number-input').value;
+    if (lab && pc) {
+      document.getElementById('selected-pc-label').textContent = `Selected: Lab ${lab} / PC ${pc}`;
+    }
+  });
+</script>
 
 <style>
   .res-wrap {
@@ -84,62 +213,239 @@
   }
   .res-card {
     background: #fff;
-    border-radius: 14px;
-    border: 1px solid #ede9f8;
-    box-shadow: 0 4px 24px rgba(108,63,197,.07);
-    padding: 2.2rem 2.5rem;
+    border-radius: 18px;
+    border: 1px solid #e5eaf3;
+    box-shadow: 0 16px 40px rgba(16, 30, 54, .08);
+    padding: 2rem 2.2rem;
     width: 100%;
-    max-width: 560px;
+    max-width: 980px;
+  }
+  .res-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
   }
   .res-title {
-    font-size: 1.4rem;
-    font-weight: 700;
-    color: #1e2535;
-    text-align: center;
-    margin-bottom: .3rem;
+    font-size: 1.7rem;
+    font-weight: 800;
+    color: #19335c;
+    margin-bottom: .25rem;
   }
   .res-subtitle {
-    font-size: .83rem;
-    color: #aaa;
-    text-align: center;
-    margin-bottom: 1.8rem;
+    font-size: .92rem;
+    color: #6a7890;
   }
-  .res-fields { display: flex; flex-direction: column; gap: .9rem; }
-  .res-field  { display: flex; flex-direction: column; gap: .28rem; }
-  .res-label  { font-size: .76rem; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: .04em; }
-  .res-input  {
-    padding: .55rem .85rem;
-    border: 1.5px solid #ede9f8;
-    border-radius: 8px;
-    font-size: .9rem;
+  .res-pill {
+    padding: .5rem .85rem;
+    border-radius: 999px;
+    background: #edf4ff;
+    color: #19335c;
+    font-size: .8rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .res-fields {
+    display: flex;
+    flex-direction: column;
+    gap: .95rem;
+  }
+  .res-field {
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+  }
+  .res-label {
+    font-size: .76rem;
+    font-weight: 800;
+    color: #667085;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+  }
+  .res-input {
+    padding: .7rem .9rem;
+    border: 1.5px solid #dbe4ef;
+    border-radius: 10px;
+    font-size: .93rem;
     font-family: inherit;
     outline: none;
-    transition: border .2s;
+    transition: border .2s, box-shadow .2s;
     width: 100%;
     box-sizing: border-box;
   }
-  .res-input:focus    { border-color: #6c3fc5; box-shadow: 0 0 0 3px rgba(108,63,197,.08); }
-  .res-readonly       { background: #f8f7fc; color: #666; cursor: default; }
-  .res-row2           { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem; }
-  .res-footer         { margin-top: 1.6rem; }
+  .res-input:focus {
+    border-color: #19335c;
+    box-shadow: 0 0 0 3px rgba(25, 51, 92, .08);
+  }
+  .res-readonly {
+    background: #f8fafc;
+    color: #5b6578;
+    cursor: default;
+  }
+  .res-row2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .9rem;
+  }
+  .pc-panel {
+    margin-top: .2rem;
+    border: 1px solid #dbe4ef;
+    border-radius: 16px;
+    padding: 1rem;
+    background: linear-gradient(180deg, #f9fbff 0%, #ffffff 100%);
+  }
+  .pc-panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: .8rem;
+  }
+  .pc-panel-head h3 {
+    margin: 0;
+    color: #19335c;
+    font-size: 1rem;
+  }
+  .pc-panel-head p {
+    margin: .25rem 0 0;
+    color: #6a7890;
+    font-size: .83rem;
+  }
+  .pc-selected {
+    font-size: .82rem;
+    font-weight: 700;
+    color: #19335c;
+    background: #eef3ff;
+    padding: .5rem .75rem;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .pc-legend {
+    display: flex;
+    gap: .9rem;
+    flex-wrap: wrap;
+    margin-bottom: .9rem;
+    font-size: .8rem;
+    color: #5b6578;
+  }
+  .pc-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+  }
+  .legend-box {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    display: inline-block;
+  }
+  .legend-available { background: #d1fae5; }
+  .legend-reserved { background: #fde68a; }
+  .legend-inuse { background: #fecaca; }
+  .pc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(98px, 1fr));
+    gap: .6rem;
+  }
+  .pc-empty {
+    grid-column: 1 / -1;
+    padding: 1rem;
+    border-radius: 12px;
+    border: 1px dashed #cfd8e6;
+    text-align: center;
+    color: #6a7890;
+    background: #fff;
+  }
+  .pc-seat {
+    min-height: 68px;
+    border: 1px solid transparent;
+    border-radius: 14px;
+    padding: .7rem .65rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .18rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+  }
+  .pc-seat strong {
+    font-size: .9rem;
+    line-height: 1.1;
+  }
+  .pc-seat span {
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    font-weight: 700;
+  }
+  .pc-seat.available {
+    background: #e9fbe4;
+    color: #166534;
+    border-color: #b7e3a8;
+  }
+  .pc-seat.reserved {
+    background: #fef3c7;
+    color: #9a6700;
+    border-color: #f1d27a;
+    cursor: not-allowed;
+  }
+  .pc-seat.in-use {
+    background: #fee2e2;
+    color: #991b1b;
+    border-color: #f2a7a7;
+    cursor: not-allowed;
+  }
+  .pc-seat.selected {
+    box-shadow: 0 0 0 3px rgba(25, 51, 92, .14);
+    transform: translateY(-1px);
+  }
+  .pc-seat:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 18px rgba(15, 23, 42, .08);
+  }
+  .pc-seat:disabled {
+    opacity: .92;
+  }
+  .res-note {
+    font-size: .8rem;
+    color: #7b8796;
+  }
+  .res-footer {
+    margin-top: 1.5rem;
+  }
   .res-btn-reserve {
     width: 100%;
-    padding: .65rem 1rem;
-    background: #6c3fc5;
+    padding: .85rem 1rem;
+    background: linear-gradient(135deg, #19335c, #365f9a);
     color: #fff;
     border: none;
-    border-radius: 8px;
-    font-size: .92rem;
-    font-weight: 700;
+    border-radius: 12px;
+    font-size: .98rem;
+    font-weight: 800;
     cursor: pointer;
-    transition: background .2s;
-    letter-spacing: .01em;
+    transition: transform .18s ease, box-shadow .18s ease;
   }
-  .res-btn-reserve:hover { background: #5a32a8; }
-
-  @media (max-width: 480px) {
-    .res-card  { padding: 1.5rem 1.2rem; }
-    .res-row2  { grid-template-columns: 1fr; }
+  .res-btn-reserve:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 24px rgba(25, 51, 92, .18);
+  }
+  @media (max-width: 760px) {
+    .res-card {
+      padding: 1.5rem 1.1rem;
+    }
+    .res-head,
+    .pc-panel-head {
+      flex-direction: column;
+    }
+    .res-row2 {
+      grid-template-columns: 1fr;
+    }
+    .pc-grid {
+      grid-template-columns: repeat(auto-fit, minmax(86px, 1fr));
+    }
   }
 </style>
 {% endblock %}

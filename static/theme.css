@@ -1,0 +1,1564 @@
+/*
+  Shared theme variables.
+  Existing pages consume these CSS custom properties, while the dark block
+  swaps values from one place for both student and admin interfaces.
+*/
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #E8EFF7;
+  --surface: #FFFFFF;
+  --surface-2: #F7FAFC;
+  --surface-3: #EEF4FB;
+  --border: #BAC5D4;
+  --border-soft: #D7DEE7;
+  --text: #2F4F4F;
+  --text-2: #708090;
+  --text-3: #778899;
+  --violet: #5B7AA8;
+  --violet-dark: #37557A;
+  --violet-soft: #D7E3F2;
+  --violet-mid: #7B6CA2;
+  --stat-primary: #19335C;
+  --stat-accent: var(--violet);
+  --yellow: #D4A720;
+  --yellow-dark: #A78310;
+  --yellow-soft: #F7EDD5;
+  --success: #10B981;
+  --success-bg: #ECFDF5;
+  --error: #EF4444;
+  --error-bg: #FEF2F2;
+  --nav-bg: var(--violet-dark);
+  --nav-text: rgba(255, 255, 255, .82);
+  --nav-text-active: #FFFFFF;
+  --input-bg: var(--bg);
+  --modal-backdrop: rgba(24, 20, 46, .5);
+  --notification-bg: #19335C;
+  --notification-icon: #FFFFFF;
+  --notification-border: #F4F7FB;
+  --pc-seat-selected-bg: #fde68a;
+  --pc-seat-selected-text: #1e293b;
+  --pc-seat-selected-border: #facc15;
+  --pc-seat-selected-ring: rgba(250, 204, 21, .25);
+  --pc-seat-available-bg-start: #f2fdf3;
+  --pc-seat-available-bg-end: #e9fbe4;
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, .1);
+  --shadow-md: 0 4px 20px rgba(0, 0, 0, .15);
+  --shadow-lg: 0 8px 40px rgba(0, 0, 0, .2);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #101624;
+  --surface: #182133;
+  --surface-2: #202B3F;
+  --surface-3: #26354E;
+  --border: #3A4A62;
+  --border-soft: #2B3A51;
+  --text: #E8EEF7;
+  --text-2: #B9C5D6;
+  --text-3: #8FA0B7;
+  --violet: #86A8D8;
+  --violet-dark: #121A29;
+  --violet-soft: #263B59;
+  --violet-mid: #B4A6E4;
+  --stat-primary: var(--text);
+  --stat-accent: var(--violet);
+  --yellow: #F0C955;
+  --yellow-dark: #D8AA25;
+  --yellow-soft: #4C3F22;
+  --success: #50D890;
+  --success-bg: #173828;
+  --error: #FF8A76;
+  --error-bg: #3D2427;
+  --nav-bg: #0E1522;
+  --nav-text: rgba(232, 238, 247, .8);
+  --nav-text-active: #FFFFFF;
+  --input-bg: #121A29;
+  --modal-backdrop: rgba(3, 8, 16, .72);
+  --notification-bg: #F0C955;
+  --notification-icon: #101624;
+  --notification-border: #101624;
+  --pc-seat-selected-bg: #ffec99;
+  --pc-seat-selected-text: #101624;
+  --pc-seat-selected-border: #fbbf24;
+  --pc-seat-selected-ring: rgba(251, 191, 36, .28);
+  --pc-seat-available-bg-start: #11221d;
+  --pc-seat-available-bg-end: #17312a;
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, .35);
+  --shadow-md: 0 8px 28px rgba(0, 0, 0, .32);
+  --shadow-lg: 0 18px 60px rgba(0, 0, 0, .42);
+}
+
+html { background: var(--bg); }
+
+body,
+nav,
+.admin-nav,
+.student-card,
+.admin-card,
+.page-card,
+.login-card,
+.reg-card,
+.modal-box,
+.notif-panel,
+.ep-box,
+input,
+select,
+textarea,
+button,
+table,
+th,
+td {
+  transition:
+    background-color .24s ease,
+    background .24s ease,
+    color .24s ease,
+    border-color .24s ease,
+    box-shadow .24s ease,
+    fill .24s ease;
+}
+
+body,
+.admin-body {
+  background-color: var(--bg) !important;
+  color: var(--text);
+}
+
+nav,
+.admin-nav {
+  background: var(--nav-bg) !important;
+}
+
+.nav-brand,
+.admin-brand {
+  color: var(--nav-text-active);
+}
+
+.nav-links a,
+.admin-nav-links a {
+  color: var(--nav-text);
+}
+
+.nav-links a:hover,
+.nav-links a.active,
+.admin-nav-links a:hover,
+.admin-nav-links a.active {
+  color: var(--nav-text-active);
+}
+
+.theme-nav-item {
+  display: flex;
+  align-items: center;
+}
+
+.theme-nav-item .theme-toggle {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--notification-bg);
+  color: var(--notification-icon);
+  justify-content: center;
+  padding: 0;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .18);
+}
+
+.theme-nav-item .theme-toggle:hover {
+  transform: translateY(-1px);
+}
+
+.theme-nav-item .theme-toggle .theme-toggle-track {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  border: 2px solid var(--notification-border);
+  justify-content: center;
+  box-shadow: none;
+}
+
+.theme-nav-item .theme-toggle .theme-toggle-thumb {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  color: inherit;
+  box-shadow: none;
+  transform: none !important;
+}
+
+.theme-nav-item .theme-toggle .theme-toggle-img {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.theme-nav-item .theme-toggle .theme-toggle-text {
+  display: none;
+}
+
+.theme-toggle {
+  --toggle-w: 74px;
+  --toggle-h: 34px;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--nav-text-active);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .15rem;
+  font: inherit;
+  line-height: 1;
+}
+
+.theme-toggle-track {
+  width: var(--toggle-w);
+  height: var(--toggle-h);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .18);
+  border: 1px solid rgba(255, 255, 255, .22);
+  display: flex;
+  align-items: center;
+  padding: 3px;
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .04);
+}
+
+.theme-toggle-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  color: #19335C;
+  display: grid;
+  place-items: center;
+  transform: translateX(0);
+  transition: transform .24s cubic-bezier(.2, .8, .2, 1), background .24s ease, color .24s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .2);
+  overflow: hidden;
+}
+
+.theme-toggle-img {
+  width: 16px;
+  height: 16px;
+  display: block;
+  transition: transform .2s ease, opacity .2s ease;
+}
+
+.theme-toggle-text {
+  font-size: .72rem;
+  font-weight: 800;
+  min-width: 30px;
+  color: inherit;
+}
+
+.theme-toggle[aria-pressed="true"] .theme-toggle-track {
+  background: rgba(240, 201, 85, .2);
+  border-color: rgba(240, 201, 85, .34);
+}
+
+.theme-toggle[aria-pressed="true"] .theme-toggle-thumb {
+  transform: translateX(40px);
+  background: var(--yellow);
+  color: #101624;
+}
+
+.theme-toggle:hover .theme-toggle-img {
+  transform: rotate(10deg) scale(1.05);
+}
+
+.theme-fab-toggle {
+  width: 54px;
+  height: 54px;
+  margin: .65rem auto 0;
+  border-radius: 50%;
+  background: var(--yellow);
+  color: #101624;
+  justify-content: center;
+  padding: 0;
+  box-shadow: var(--shadow-lg);
+}
+
+.theme-fab-toggle .theme-toggle-track {
+  width: 54px;
+  height: 54px;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  border: 2px solid var(--notification-border);
+  justify-content: center;
+  box-shadow: none;
+}
+
+.theme-fab-toggle .theme-toggle-thumb {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  color: inherit;
+  box-shadow: none;
+  transform: none !important;
+}
+
+.theme-fab-toggle .theme-toggle-img {
+  width: 22px;
+  height: 22px;
+}
+
+.theme-fab-toggle .theme-toggle-text {
+  display: none;
+}
+
+.theme-standalone-wrap {
+  position: fixed;
+  right: 1.6rem;
+  bottom: 1.6rem;
+  z-index: 8500;
+}
+
+.theme-standalone-toggle {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--yellow);
+  color: #101624;
+  justify-content: center;
+  padding: 0;
+  box-shadow: var(--shadow-lg);
+}
+
+.theme-standalone-toggle .theme-toggle-track {
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  border: 2px solid var(--notification-border);
+  justify-content: center;
+  box-shadow: none;
+}
+
+.theme-standalone-toggle .theme-toggle-thumb {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  color: inherit;
+  box-shadow: none;
+  transform: none !important;
+}
+
+.theme-standalone-toggle .theme-toggle-img {
+  width: 22px;
+  height: 22px;
+}
+
+.theme-standalone-toggle .theme-toggle-text {
+  display: none;
+}
+
+.login-main,
+.register-main {
+  background: transparent !important;
+}
+
+.login-card,
+.reg-card,
+.student-card,
+.admin-card,
+.page-card,
+.profile-card,
+.card,
+.modal-box,
+.notif-panel,
+.ep-box,
+#alert-box {
+  background: var(--surface) !important;
+  border-color: var(--border-soft) !important;
+  color: var(--text);
+  box-shadow: var(--shadow-md);
+}
+
+.hero-card {
+  background: linear-gradient(135deg, var(--nav-bg), var(--violet)) !important;
+}
+
+.hero-metric {
+  background: rgba(255, 255, 255, .12);
+  border-color: rgba(255, 255, 255, .18);
+}
+
+input,
+select,
+textarea,
+.login-field input,
+.field input,
+.field select,
+.ann-textarea,
+.table-search,
+.modal-input,
+.sitin-input,
+.mfield input,
+.mfield select,
+.ep-field input {
+  background: var(--input-bg) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-3) !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+.login-field input:focus,
+.field input:focus,
+.field select:focus,
+.ann-textarea:focus,
+.table-search:focus,
+.modal-input:focus,
+.sitin-input:focus,
+.mfield input:focus,
+.mfield select:focus,
+.ep-field input:focus {
+  background: var(--surface) !important;
+  border-color: var(--violet-mid) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--violet) 18%, transparent);
+}
+
+.dropdown-menu,
+.modal-header,
+.modal-footer,
+.stat-row,
+.analytics-chip,
+.current-session-item,
+.stack-item,
+.leader-mini-row,
+.notif-item,
+.ep-pic-section,
+#alert-icon-wrap,
+#sf-suggestions,
+th,
+.data-table th {
+  background: var(--surface-2) !important;
+  border-color: var(--border-soft) !important;
+  color: var(--text);
+}
+
+td,
+.data-table td,
+.ann-item,
+.leader-row,
+.ep-tabs,
+.ep-footer,
+.notif-panel-head {
+  border-color: var(--border-soft) !important;
+}
+
+tr:hover td,
+.data-table tr:hover td,
+.search-result-item:hover,
+.sf-suggest-item:hover {
+  background: var(--violet-soft) !important;
+}
+
+.section-head h3,
+.profile-top h2,
+.profile-info strong,
+.current-session-item strong,
+.leader-mini-row span,
+.notif-panel-head h3,
+.ep-header h3,
+.analytics-chip strong,
+.leader-row span,
+.page-title,
+.reg-header h1,
+.card h3,
+.ann-title,
+#alert-msg,
+#sf-name,
+#sf-sessions {
+  color: var(--text) !important;
+}
+
+.profile-top p,
+.profile-info span,
+.remarks-box p,
+.section-head a,
+.section-head span,
+.stack-meta,
+.stack-item p,
+.leader-mini-row p,
+.empty-note,
+.rules-list,
+.notif-item p,
+.ep-tab,
+.ep-pic-hint,
+.card-body p,
+.ann-content,
+.legend-item,
+.table-count,
+.no-data,
+.result-course,
+.signup-link,
+.reg-footer,
+.row-opts label,
+.toolbar label {
+  color: var(--text-2) !important;
+}
+
+.modal-overlay,
+.ep-overlay,
+#alert-overlay {
+  background: var(--modal-backdrop) !important;
+}
+
+.notif-fab-wrap {
+  position: fixed;
+  right: 1.6rem;
+  bottom: 1.6rem;
+  z-index: 8500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.notif-fab {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notif-fab svg {
+  width: 26px;
+  height: 26px;
+}
+
+.notif-count {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 .35rem;
+  border-radius: 999px;
+  background: var(--yellow);
+  color: #19335C;
+  font-size: .75rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--notification-border);
+}
+
+.notif-panel {
+  position: absolute;
+  right: 0;
+  bottom: 128px;
+  width: 340px;
+  max-height: 420px;
+  border-radius: 18px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(12px);
+  transition: opacity .2s ease, transform .2s ease;
+}
+
+.notif-panel.open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.notif-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1rem .8rem;
+}
+
+.notif-panel-head h3 {
+  margin: 0;
+  font-size: .98rem;
+}
+
+.notif-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+}
+
+.notif-panel-list {
+  max-height: 350px;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+}
+
+.notif-item {
+  border-left: 4px solid var(--yellow);
+  padding: .8rem .9rem;
+  border-radius: 0 14px 14px 0;
+}
+
+.notif-item p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Notification icon switching: the existing SVG stays in place and changes via variables. */
+.notif-fab {
+  background: var(--notification-bg) !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.notif-fab svg {
+  fill: var(--notification-icon) !important;
+}
+
+.notif-count {
+  border-color: var(--notification-border) !important;
+}
+
+.notif-close,
+.ep-close,
+.modal-close,
+#alert-close {
+  background: var(--surface-3) !important;
+  color: var(--text-2) !important;
+  border-color: var(--border) !important;
+}
+
+.profile-edit-btn,
+.ep-btn-photo,
+.ep-btn-save,
+.btn-login,
+.btn-register,
+.btn-blue,
+.btn-add,
+.card-header-blue {
+  background: var(--violet) !important;
+  color: #fff !important;
+}
+
+.btn-submit-ann {
+  background: var(--success) !important;
+  color: #fff !important;
+}
+
+.btn-gray,
+.ep-btn-cancel {
+  background: var(--surface-2) !important;
+  border-color: var(--border) !important;
+  color: var(--text-2) !important;
+}
+
+.btn-edit {
+  background: var(--violet-soft) !important;
+  border-color: var(--border) !important;
+  color: var(--violet) !important;
+}
+
+.btn-del,
+.btn-reset {
+  background: var(--error-bg) !important;
+  border-color: var(--error) !important;
+  color: var(--error) !important;
+}
+
+.leader-self {
+  background: var(--yellow-soft) !important;
+  border-color: var(--yellow) !important;
+}
+
+.register-back-link {
+  background: color-mix(in srgb, var(--surface) 94%, transparent) !important;
+  color: var(--text) !important;
+  border-color: var(--border-soft) !important;
+}
+
+.table-container,
+.res-table-perfect {
+  background: var(--surface) !important;
+  border-color: var(--border-soft) !important;
+}
+
+.res-table-perfect th,
+.res-table-perfect td {
+  background: var(--surface) !important;
+  border-color: var(--border-soft) !important;
+  color: var(--text) !important;
+}
+
+.res-table-perfect th {
+  background: var(--surface-2) !important;
+  color: var(--text-2) !important;
+}
+
+.res-table-perfect tr:nth-child(even) td {
+  background: var(--surface) !important;
+}
+
+.res-table-perfect tr:hover td {
+  background: var(--violet-soft) !important;
+}
+
+.res-table-perfect .no-data {
+  background: var(--surface) !important;
+  color: var(--text-3) !important;
+}
+
+.hist-table-wrap,
+.leader-card {
+  background: var(--surface) !important;
+  border-color: var(--border-soft) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+.hist-table,
+.leader-table {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+}
+
+.hist-table thead tr,
+.leader-table thead tr {
+  background: var(--surface-2) !important;
+  color: var(--text-2) !important;
+}
+
+.hist-table th,
+.leader-table th {
+  background: var(--surface-2) !important;
+  border-color: var(--border-soft) !important;
+  color: var(--text-2) !important;
+}
+
+.hist-table td,
+.leader-table td {
+  background: var(--surface) !important;
+  border-color: var(--border-soft) !important;
+  color: var(--text) !important;
+}
+
+.hist-table tbody tr:hover td,
+.leader-table tbody tr:hover td {
+  background: var(--violet-soft) !important;
+}
+
+.hist-no-data,
+.hist-table .hist-no-data,
+.leader-table td[colspan] {
+  background: var(--surface) !important;
+  color: var(--text-3) !important;
+}
+
+.leader-highlight td {
+  background: var(--yellow-soft) !important;
+  border-color: var(--yellow) !important;
+}
+
+.feedback-preview,
+.hist-count,
+.hist-feedback-empty,
+.hist-per-page,
+.hist-form-field label {
+  color: var(--text-2) !important;
+}
+
+.hist-pg {
+  background: var(--surface-2) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border-soft);
+}
+
+.hist-pg.active {
+  background: var(--yellow) !important;
+  color: #101624 !important;
+  border-color: var(--yellow-dark) !important;
+}
+
+.hist-pg:hover:not(.active):not(.disabled),
+.pg-btn:hover:not(.active):not(.disabled) {
+  background: var(--violet-soft) !important;
+  color: var(--text) !important;
+}
+
+.pg-btn,
+:root[data-theme="dark"] .pg-btn {
+  background: var(--surface-2) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border-soft) !important;
+}
+
+.pg-btn.active,
+:root[data-theme="dark"] .pg-btn.active {
+  background: var(--yellow) !important;
+  color: #101624 !important;
+  border-color: var(--yellow-dark) !important;
+}
+
+.pg-btn.disabled,
+:root[data-theme="dark"] .pg-btn.disabled {
+  opacity: .45 !important;
+  pointer-events: none !important;
+}
+
+.res-card,
+.pc-panel,
+.pc-empty {
+  background: var(--surface) !important;
+  border-color: var(--border-soft) !important;
+  color: var(--text) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+.res-title,
+.pc-panel-head h3 {
+  color: var(--text) !important;
+}
+
+.res-subtitle,
+.res-label,
+.res-note,
+.pc-panel-head p,
+.pc-legend,
+.pc-empty {
+  color: var(--text-2) !important;
+}
+
+.res-input,
+.res-readonly {
+  background: var(--input-bg) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+.res-pill,
+.pc-selected {
+  background: var(--surface-2) !important;
+  border: 1px solid var(--border-soft) !important;
+  color: var(--text) !important;
+}
+
+.table-wrapper,
+.sessions-table {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+}
+
+.sessions-table thead {
+  background: var(--surface-2) !important;
+}
+
+.sessions-table th {
+  background: var(--surface-2) !important;
+  color: var(--text-2) !important;
+  border-bottom: 1px solid var(--border-soft) !important;
+}
+
+.sessions-table td {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border-bottom: 1px solid var(--border-soft) !important;
+}
+
+.sessions-table tbody tr:nth-child(even) td {
+  background: var(--surface) !important;
+}
+
+.sessions-table tbody tr:hover td {
+  background: var(--violet-soft) !important;
+}
+
+.sessions-table .no-data {
+  background: var(--surface) !important;
+  color: var(--text-3) !important;
+}
+
+.status-badge {
+  border: 1px solid transparent;
+}
+
+.status-active {
+  background: color-mix(in srgb, var(--violet-soft) 70%, var(--surface) 30%) !important;
+  color: var(--text) !important;
+  border-color: var(--border-soft) !important;
+}
+
+.status-pending {
+  background: color-mix(in srgb, var(--yellow-soft) 75%, var(--surface) 25%) !important;
+  color: #8a5b00 !important;
+  border-color: color-mix(in srgb, var(--yellow-dark) 40%, var(--border-soft) 60%) !important;
+}
+
+.status-approved {
+  background: color-mix(in srgb, var(--violet-soft) 55%, var(--surface) 45%) !important;
+  color: var(--text) !important;
+  border-color: var(--border-soft) !important;
+}
+
+.status-done {
+  background: color-mix(in srgb, var(--success-bg) 65%, var(--surface) 35%) !important;
+  color: #0f7a3a !important;
+  border-color: color-mix(in srgb, var(--success) 35%, var(--border-soft) 65%) !important;
+}
+
+.status-denied {
+  background: color-mix(in srgb, var(--error-bg) 65%, var(--surface) 35%) !important;
+  color: #b42318 !important;
+  border-color: color-mix(in srgb, var(--error) 35%, var(--border-soft) 65%) !important;
+}
+
+:root[data-theme="dark"] .student-card,
+:root[data-theme="dark"] .admin-card,
+:root[data-theme="dark"] .page-card,
+:root[data-theme="dark"] .login-card,
+:root[data-theme="dark"] .reg-card,
+:root[data-theme="dark"] .profile-card,
+:root[data-theme="dark"] .card,
+:root[data-theme="dark"] .modal-box,
+:root[data-theme="dark"] .notif-panel,
+:root[data-theme="dark"] .ep-box,
+:root[data-theme="dark"] .res-card,
+:root[data-theme="dark"] .pc-panel,
+:root[data-theme="dark"] .leader-card,
+:root[data-theme="dark"] .hist-table-wrap,
+:root[data-theme="dark"] .table-container,
+:root[data-theme="dark"] .settings-section,
+:root[data-theme="dark"] .import-panel,
+:root[data-theme="dark"] .rpt-stat-card,
+:root[data-theme="dark"] .analytics-chip,
+:root[data-theme="dark"] .summary-item,
+:root[data-theme="dark"] .current-session-item,
+:root[data-theme="dark"] .stack-item,
+:root[data-theme="dark"] .leader-mini-row,
+:root[data-theme="dark"] .lab-item,
+:root[data-theme="dark"] .software-category,
+:root[data-theme="dark"] .side-note,
+:root[data-theme="dark"] .ann-item,
+:root[data-theme="dark"] .hero-metric,
+:root[data-theme="dark"] .ep-pic-section,
+:root[data-theme="dark"] .res-pill,
+:root[data-theme="dark"] .pc-selected {
+  background: var(--surface) !important;
+  border-color: var(--border-soft) !important;
+  color: var(--text) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+:root[data-theme="dark"] .hero-card {
+  background: linear-gradient(135deg, var(--nav-bg), var(--violet)) !important;
+  color: #fff !important;
+}
+
+:root[data-theme="dark"] .hero-metric,
+:root[data-theme="dark"] .current-session-item,
+:root[data-theme="dark"] .stack-item,
+:root[data-theme="dark"] .leader-mini-row,
+:root[data-theme="dark"] .summary-item,
+:root[data-theme="dark"] .lab-item,
+:root[data-theme="dark"] .software-category,
+:root[data-theme="dark"] .analytics-chip,
+:root[data-theme="dark"] .rpt-stat-card,
+:root[data-theme="dark"] .settings-section,
+:root[data-theme="dark"] .import-panel,
+:root[data-theme="dark"] .side-note,
+:root[data-theme="dark"] .ann-item {
+  background: linear-gradient(180deg, var(--surface-2), var(--surface)) !important;
+}
+
+:root[data-theme="dark"] .page-title,
+:root[data-theme="dark"] .section-title,
+:root[data-theme="dark"] .ann-title,
+:root[data-theme="dark"] .page-heading,
+:root[data-theme="dark"] .hero-card h1,
+:root[data-theme="dark"] .profile-top h2,
+:root[data-theme="dark"] .section-head h3,
+:root[data-theme="dark"] .current-session-item strong,
+:root[data-theme="dark"] .leader-mini-row span,
+:root[data-theme="dark"] .summary-item strong,
+:root[data-theme="dark"] .rpt-stat-val,
+:root[data-theme="dark"] .rpt-stat-lbl,
+:root[data-theme="dark"] .page-card h3,
+:root[data-theme="dark"] .admin-card h3,
+:root[data-theme="dark"] .modal-header h3,
+:root[data-theme="dark"] .ep-header h3,
+:root[data-theme="dark"] .notif-panel-head h3 {
+  color: var(--text) !important;
+}
+
+:root[data-theme="dark"] .profile-top p,
+:root[data-theme="dark"] .profile-info span,
+:root[data-theme="dark"] .remarks-box p,
+:root[data-theme="dark"] .section-head a,
+:root[data-theme="dark"] .section-head span,
+:root[data-theme="dark"] .stack-meta,
+:root[data-theme="dark"] .stack-item p,
+:root[data-theme="dark"] .leader-mini-row p,
+:root[data-theme="dark"] .empty-note,
+:root[data-theme="dark"] .rules-list,
+:root[data-theme="dark"] .notif-item p,
+:root[data-theme="dark"] .ep-tab,
+:root[data-theme="dark"] .ep-pic-hint,
+:root[data-theme="dark"] .card-body p,
+:root[data-theme="dark"] .ann-content,
+:root[data-theme="dark"] .legend-item,
+:root[data-theme="dark"] .table-count,
+:root[data-theme="dark"] .no-data,
+:root[data-theme="dark"] .result-course,
+:root[data-theme="dark"] .signup-link,
+:root[data-theme="dark"] .reg-footer,
+:root[data-theme="dark"] .row-opts label,
+:root[data-theme="dark"] .toolbar label,
+:root[data-theme="dark"] .page-card p,
+:root[data-theme="dark"] .settings-item-content p,
+:root[data-theme="dark"] .import-panel p,
+:root[data-theme="dark"] .dash-accordion > summary p,
+:root[data-theme="dark"] .dash-help,
+:root[data-theme="dark"] .res-subtitle,
+:root[data-theme="dark"] .res-label,
+:root[data-theme="dark"] .res-note,
+:root[data-theme="dark"] .pc-panel-head p,
+:root[data-theme="dark"] .pc-legend,
+:root[data-theme="dark"] .back-link {
+  color: var(--text-2) !important;
+}
+
+:root[data-theme="dark"] .admin-btn-primary,
+:root[data-theme="dark"] .btn-add,
+:root[data-theme="dark"] .btn-blue,
+:root[data-theme="dark"] .btn-login,
+:root[data-theme="dark"] .btn-register,
+:root[data-theme="dark"] .btn-submit-ann,
+:root[data-theme="dark"] .profile-edit-btn,
+:root[data-theme="dark"] .ep-btn-photo,
+:root[data-theme="dark"] .ep-btn-save,
+:root[data-theme="dark"] .settings-save-btn,
+:root[data-theme="dark"] .dash-action-button,
+:root[data-theme="dark"] .res-btn-reserve,
+:root[data-theme="dark"] .card-header-blue {
+  background: var(--violet) !important;
+  color: #fff !important;
+  border-color: var(--violet) !important;
+}
+
+:root[data-theme="dark"] .admin-btn-secondary,
+:root[data-theme="dark"] .btn-gray,
+:root[data-theme="dark"] .ep-btn-cancel,
+:root[data-theme="dark"] .dash-action-link,
+:root[data-theme="dark"] .btn-edit,
+:root[data-theme="dark"] .register-back-link,
+:root[data-theme="dark"] .hist-pg,
+:root[data-theme="dark"] .back-link {
+  background: var(--surface-2) !important;
+  color: var(--text) !important;
+  border-color: var(--border-soft) !important;
+}
+
+:root[data-theme="dark"] .admin-table,
+:root[data-theme="dark"] .data-table,
+:root[data-theme="dark"] .hist-table,
+:root[data-theme="dark"] .leader-table,
+:root[data-theme="dark"] .res-table-perfect {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+}
+
+:root[data-theme="dark"] .admin-table th,
+:root[data-theme="dark"] .data-table th,
+:root[data-theme="dark"] .hist-table th,
+:root[data-theme="dark"] .leader-table th,
+:root[data-theme="dark"] .res-table-perfect th {
+  background: var(--surface-2) !important;
+  color: var(--text-2) !important;
+  border-color: var(--border-soft) !important;
+}
+
+:root[data-theme="dark"] .admin-table td,
+:root[data-theme="dark"] .data-table td,
+:root[data-theme="dark"] .hist-table td,
+:root[data-theme="dark"] .leader-table td,
+:root[data-theme="dark"] .res-table-perfect td {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border-color: var(--border-soft) !important;
+}
+
+:root[data-theme="dark"] .admin-table tr:hover td,
+:root[data-theme="dark"] .data-table tr:hover td,
+:root[data-theme="dark"] .hist-table tbody tr:hover td,
+:root[data-theme="dark"] .leader-table tbody tr:hover td,
+:root[data-theme="dark"] .res-table-perfect tr:hover td {
+  background: var(--surface-3) !important;
+}
+
+:root[data-theme="dark"] .ann-textarea,
+:root[data-theme="dark"] .table-search,
+:root[data-theme="dark"] .modal-input,
+:root[data-theme="dark"] .sitin-input,
+:root[data-theme="dark"] .mfield input,
+:root[data-theme="dark"] .mfield select,
+:root[data-theme="dark"] .field input,
+:root[data-theme="dark"] .field select,
+:root[data-theme="dark"] .field textarea,
+:root[data-theme="dark"] .ep-field input,
+:root[data-theme="dark"] .ep-field textarea,
+:root[data-theme="dark"] .res-input,
+:root[data-theme="dark"] .res-readonly,
+:root[data-theme="dark"] .login-field input,
+:root[data-theme="dark"] .search-input,
+:root[data-theme="dark"] .import-form input[type="file"] {
+  background: var(--input-bg) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+:root[data-theme="dark"] .dash-accordion,
+:root[data-theme="dark"] .dash-accordion > summary,
+:root[data-theme="dark"] .dash-accordion-body,
+:root[data-theme="dark"] .toggle-switch .toggle-slider,
+:root[data-theme="dark"] .upload-form input[type="file"] {
+  border-color: var(--border-soft) !important;
+}
+
+:root[data-theme="dark"] .upload-card,
+:root[data-theme="dark"] .upload-labs,
+:root[data-theme="dark"] .upload-dropzone,
+:root[data-theme="dark"] .upload-summary,
+:root[data-theme="dark"] .software-modal-box,
+:root[data-theme="dark"] .software-modal-header,
+:root[data-theme="dark"] .software-modal-body,
+:root[data-theme="dark"] .software-modal-footer,
+:root[data-theme="dark"] .status-toggle,
+:root[data-theme="dark"] .lab-check,
+:root[data-theme="dark"] .lab-chip,
+:root[data-theme="dark"] .upload-clear,
+:root[data-theme="dark"] .browse-btn {
+  background: var(--surface-2) !important;
+  border-color: var(--border-soft) !important;
+  color: var(--text) !important;
+}
+
+:root[data-theme="dark"] .upload-dropzone:hover,
+:root[data-theme="dark"] .upload-dropzone.is-dragover {
+  border-color: var(--yellow) !important;
+  background: var(--surface-3) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18) !important;
+}
+
+:root[data-theme="dark"] .drop-icon {
+  border-color: var(--border-soft) !important;
+  background: var(--surface-2) !important;
+  color: var(--text) !important;
+}
+
+:root[data-theme="dark"] .browse-btn {
+  border-color: var(--border-soft) !important;
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  box-shadow: 0 0 0 rgba(0,0,0,0) !important;
+}
+
+:root[data-theme="dark"] .upload-submit {
+  background: var(--violet) !important;
+  color: var(--nav-text-active) !important;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.24) !important;
+}
+
+:root[data-theme="dark"] .upload-labs-head strong,
+:root[data-theme="dark"] .upload-labs-head span,
+:root[data-theme="dark"] .drop-text,
+:root[data-theme="dark"] .drop-subtext,
+:root[data-theme="dark"] .upload-badge,
+:root[data-theme="dark"] #upload-name,
+:root[data-theme="dark"] #upload-size,
+:root[data-theme="dark"] .software-modal-header h3,
+:root[data-theme="dark"] .software-modal-header p,
+:root[data-theme="dark"] .status-toggle,
+:root[data-theme="dark"] .upload-error,
+:root[data-theme="dark"] .btn-gray {
+  color: var(--text) !important;
+}
+
+:root[data-theme="dark"] .software-page,
+:root[data-theme="dark"] .res-card,
+:root[data-theme="dark"] .upload-card,
+:root[data-theme="dark"] .upload-labs,
+:root[data-theme="dark"] .upload-dropzone,
+:root[data-theme="dark"] .upload-summary,
+:root[data-theme="dark"] .software-modal-box,
+:root[data-theme="dark"] .software-modal-header,
+:root[data-theme="dark"] .software-modal-body,
+:root[data-theme="dark"] .software-modal-footer,
+:root[data-theme="dark"] .lab-check,
+:root[data-theme="dark"] .upload-clear,
+:root[data-theme="dark"] .browse-btn,
+:root[data-theme="dark"] .action-btn,
+:root[data-theme="dark"] .software-modal-close,
+:root[data-theme="dark"] .status-badge,
+:root[data-theme="dark"] .admin-table,
+:root[data-theme="dark"] .software-chip,
+:root[data-theme="dark"] .software-chip-more,
+:root[data-theme="dark"] .pc-panel,
+:root[data-theme="dark"] .software-panel {
+  background: var(--surface-2) !important;
+  border-color: var(--border-soft) !important;
+  color: var(--text) !important;
+}
+
+:root[data-theme="dark"] .software-page {
+  box-shadow: var(--shadow-md) !important;
+}
+
+:root[data-theme="dark"] .page-title,
+:root[data-theme="dark"] .upload-copy h3,
+:root[data-theme="dark"] .software-modal-header h3 {
+  color: var(--text) !important;
+}
+
+:root[data-theme="dark"] .page-subtitle,
+:root[data-theme="dark"] .upload-copy p,
+:root[data-theme="dark"] .upload-labs-head strong,
+:root[data-theme="dark"] .upload-labs-head span,
+:root[data-theme="dark"] .lab-chip,
+:root[data-theme="dark"] .software-chip,
+:root[data-theme="dark"] .software-chip-more,
+:root[data-theme="dark"] .software-modal-header p,
+:root[data-theme="dark"] .status-badge,
+:root[data-theme="dark"] .software-modal-close,
+:root[data-theme="dark"] .btn-gray,
+:root[data-theme="dark"] .upload-clear,
+:root[data-theme="dark"] .software-empty,
+:root[data-theme="dark"] .res-note,
+:root[data-theme="dark"] .res-label,
+:root[data-theme="dark"] .pc-legend,
+:root[data-theme="dark"] .res-pill,
+:root[data-theme="dark"] .res-guide span {
+  color: var(--text-2) !important;
+}
+
+:root[data-theme="dark"] .lab-check input,
+:root[data-theme="dark"] .status-toggle input {
+  accent-color: var(--violet) !important;
+}
+
+:root[data-theme="dark"] .upload-dropzone:hover,
+:root[data-theme="dark"] .upload-dropzone.is-dragover,
+:root[data-theme="dark"] .pc-seat:hover {
+  border-color: var(--yellow) !important;
+  background: var(--surface-3) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18) !important;
+}
+
+:root[data-theme="dark"] .drop-icon {
+  border-color: var(--border-soft) !important;
+  background: var(--surface-2) !important;
+  color: var(--text) !important;
+}
+
+:root[data-theme="dark"] .drop-text,
+:root[data-theme="dark"] .drop-subtext,
+:root[data-theme="dark"] .upload-badge,
+:root[data-theme="dark"] #upload-name,
+:root[data-theme="dark"] #upload-size,
+:root[data-theme="dark"] .software-modal-body,
+:root[data-theme="dark"] .btn-gray,
+:root[data-theme="dark"] .software-modal-close {
+  color: var(--text) !important;
+}
+
+:root[data-theme="dark"] .upload-summary {
+  background: var(--surface) !important;
+}
+
+:root[data-theme="dark"] .upload-badge {
+  background: var(--surface-3) !important;
+}
+
+:root[data-theme="dark"] .upload-clear {
+  background: var(--surface) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.24) !important;
+}
+
+:root[data-theme="dark"] .upload-error {
+  color: var(--error) !important;
+}
+
+:root[data-theme="dark"] .software-modal-close {
+  background: var(--surface) !important;
+  border: 1px solid var(--border-soft) !important;
+}
+
+:root[data-theme="dark"] .modal-input,
+:root[data-theme="dark"] .modal-textarea {
+  background: var(--input-bg) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+:root[data-theme="dark"] .modal-input:focus {
+  box-shadow: 0 0 0 3px rgba(134, 150, 176, .15) !important;
+}
+
+:root[data-theme="dark"] .status-toggle {
+  background: var(--surface) !important;
+  border-color: var(--border-soft) !important;
+}
+
+:root[data-theme="dark"] .btn-gray {
+  background: var(--surface) !important;
+  border-color: var(--border-soft) !important;
+}
+
+:root[data-theme="dark"] .admin-table th,
+:root[data-theme="dark"] .admin-table td {
+  background: var(--surface) !important;
+}
+
+:root[data-theme="dark"] .admin-table tbody tr:hover {
+  background: var(--surface-3) !important;
+}
+
+:root[data-theme="dark"] .status-badge.active {
+  background: color-mix(in srgb, var(--success-bg) 50%, var(--surface) 50%) !important;
+  color: var(--success) !important;
+}
+
+:root[data-theme="dark"] .status-badge.inactive {
+  background: color-mix(in srgb, var(--error-bg) 55%, var(--surface) 45%) !important;
+  color: var(--error) !important;
+}
+
+:root[data-theme="dark"] .action-btn.edit {
+  background: color-mix(in srgb, var(--violet-soft) 50%, var(--surface) 50%) !important;
+  color: var(--text) !important;
+}
+
+:root[data-theme="dark"] .action-btn.edit:hover,
+:root[data-theme="dark"] .action-btn.delete:hover {
+  filter: brightness(1.05) !important;
+}
+
+:root[data-theme="dark"] .action-btn.delete {
+  background: color-mix(in srgb, var(--error-bg) 55%, var(--surface) 45%) !important;
+  color: var(--error) !important;
+}
+
+:root[data-theme="dark"] .software-page {
+  background: linear-gradient(180deg, var(--surface-2), var(--surface)) !important;
+  border-color: var(--border-soft) !important;
+}
+
+:root[data-theme="dark"] .pc-panel,
+:root[data-theme="dark"] .software-panel {
+  background: var(--surface) !important;
+}
+
+:root[data-theme="dark"] .pc-panel-head h3,
+:root[data-theme="dark"] .software-panel-head h3 {
+  color: var(--text) !important;
+}
+
+:root[data-theme="dark"] .pc-panel-head p,
+:root[data-theme="dark"] .software-panel-head p,
+:root[data-theme="dark"] .pc-legend,
+:root[data-theme="dark"] .software-empty,
+:root[data-theme="dark"] .res-note,
+:root[data-theme="dark"] .res-label,
+:root[data-theme="dark"] .res-pill,
+:root[data-theme="dark"] .res-guide span {
+  color: var(--text-2) !important;
+}
+
+:root[data-theme="dark"] .res-pill,
+:root[data-theme="dark"] .res-guide span,
+:root[data-theme="dark"] .software-chip,
+:root[data-theme="dark"] .software-chip-more,
+:root[data-theme="dark"] .lab-chip {
+  background: var(--surface-2) !important;
+}
+
+:root[data-theme="dark"] .res-guide span {
+  border-color: var(--border-soft) !important;
+}
+
+:root[data-theme="dark"] .pc-seat {
+  background: var(--surface) !important;
+  border-color: var(--border-soft) !important;
+}
+
+:root[data-theme="dark"] .pc-seat.available {
+  background: rgba(34, 197, 94, .12) !important;
+  border-color: rgba(34, 197, 94, .4) !important;
+}
+
+:root[data-theme="dark"] .pc-seat.reserved {
+  background: rgba(248, 113, 113, .12) !important;
+  border-color: rgba(248, 113, 113, .4) !important;
+}
+
+:root[data-theme="dark"] .pc-seat.in-use {
+  background: rgba(96, 165, 250, .12) !important;
+  border-color: rgba(96, 165, 250, .4) !important;
+}
+
+:root[data-theme="dark"] .pc-seat strong,
+:root[data-theme="dark"] .pc-seat span {
+  color: var(--text) !important;
+}
+
+:root[data-theme="dark"] .res-btn-reserve {
+  background: linear-gradient(135deg, #486091 0%, #6c80b0 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.24) !important;
+}
+
+:root[data-theme="dark"] .reservation-alert {
+  background: var(--surface-3) !important;
+  border-color: var(--border-soft) !important;
+  color: var(--text) !important;
+}
+
+:root[data-theme="dark"] body {
+  background-image: none !important;
+}
+
+:root[data-theme="dark"] .register-back-link,
+:root[data-theme="dark"] .reg-card,
+:root[data-theme="dark"] .reg-header h1,
+:root[data-theme="dark"] .reg-header p,
+:root[data-theme="dark"] .force-pw-main,
+:root[data-theme="dark"] .force-pw-card,
+:root[data-theme="dark"] .force-pw-hero h1,
+:root[data-theme="dark"] .force-pw-hero p,
+:root[data-theme="dark"] .force-pw-form h2,
+:root[data-theme="dark"] .force-pw-form .subtext,
+:root[data-theme="dark"] .force-pw-note,
+:root[data-theme="dark"] .show-pw-btn {
+  color: var(--text) !important;
+}
+
+:root[data-theme="dark"] .reg-card,
+:root[data-theme="dark"] .force-pw-card {
+  background: linear-gradient(180deg, var(--surface-2), var(--surface)) !important;
+  border-color: var(--border-soft) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+:root[data-theme="dark"] .register-back-link,
+:root[data-theme="dark"] .show-pw-btn {
+  background: var(--surface-2) !important;
+  border-color: var(--border-soft) !important;
+}
+
+:root[data-theme="dark"] .force-pw-hero img {
+  filter: drop-shadow(0 4px 14px rgba(240, 201, 85, .18));
+}
+
+:root[data-theme="dark"] .sessions-table thead,
+:root[data-theme="dark"] .sessions-table th {
+  background: var(--surface-2) !important;
+}
+
+:root[data-theme="dark"] .sessions-table td,
+:root[data-theme="dark"] .sessions-table .no-data {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+}
+
+:root[data-theme="dark"] .status-active {
+  background: color-mix(in srgb, var(--violet-soft) 60%, var(--surface) 40%) !important;
+  color: var(--text) !important;
+}
+
+:root[data-theme="dark"] .status-pending {
+  background: color-mix(in srgb, var(--yellow-soft) 70%, var(--surface) 30%) !important;
+  color: #f0c955 !important;
+}
+
+:root[data-theme="dark"] .status-approved {
+  background: color-mix(in srgb, var(--violet-soft) 55%, var(--surface) 45%) !important;
+  color: var(--text) !important;
+}
+
+:root[data-theme="dark"] .status-done {
+  background: color-mix(in srgb, var(--success-bg) 60%, var(--surface) 40%) !important;
+  color: var(--success) !important;
+}
+
+:root[data-theme="dark"] .status-denied {
+  background: color-mix(in srgb, var(--error-bg) 60%, var(--surface) 40%) !important;
+  color: var(--error) !important;
+}
+
+:root[data-theme="dark"] .logo-area img,
+:root[data-theme="dark"] .nav-brand img,
+:root[data-theme="dark"] .admin-brand img {
+  filter: drop-shadow(0 4px 14px rgba(240, 201, 85, .2));
+}
+
+@media (max-width: 900px) {
+  nav,
+  .admin-nav {
+    height: auto !important;
+    min-height: 56px;
+    align-items: flex-start;
+    gap: .6rem;
+    overflow: visible !important;
+    padding-block: .55rem !important;
+  }
+
+  .nav-links,
+  .admin-nav-links {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .theme-toggle {
+    --toggle-w: 62px;
+    --toggle-h: 30px;
+  }
+
+  .theme-toggle-thumb {
+    width: 24px;
+    height: 24px;
+  }
+
+  .theme-toggle[aria-pressed="true"] .theme-toggle-thumb {
+    transform: translateX(32px);
+  }
+
+  .theme-toggle-text {
+    display: none;
+  }
+
+  .notif-fab-wrap {
+    right: 1rem;
+    bottom: 1rem;
+  }
+
+  .notif-panel {
+    width: min(340px, calc(100vw - 2rem));
+  }
+
+  .theme-standalone-wrap {
+    right: 1rem;
+    bottom: 1rem;
+  }
+}

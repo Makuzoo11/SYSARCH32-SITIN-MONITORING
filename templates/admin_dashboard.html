@@ -1,0 +1,122 @@
+{% extends "admin_base.html" %}
+{% block title %}Admin Dashboard - CCS{% endblock %}
+{% block content %}
+<div class="admin-grid">
+  <div class="admin-card" id="analytics-card">
+    <div class="card-header-blue">Statistics and Analytics</div>
+    <div class="card-body">
+      <div class="stat-row">
+        <span class="stat-label">Students Registered</span>
+        <span class="stat-val">{{ stats.total_students }}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Currently Sit-in</span>
+        <span class="stat-val">{{ stats.currently_sitin }}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Total Sit-in</span>
+        <span class="stat-val">{{ stats.total_sitin }}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Pending Requests</span>
+        <span class="stat-val">{{ stats.pending_requests }}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Feedback Entries</span>
+        <span class="stat-val">{{ stats.feedback_entries }}</span>
+      </div>
+      <div class="analytics-grid">
+        <div class="analytics-chip">
+          <span>Average Session Hours</span>
+          <strong>{{ analytics.avg_hours }}</strong>
+        </div>
+        <div class="analytics-chip">
+          <span>Average Feedback</span>
+          <strong>{{ analytics.avg_feedback }}</strong>
+        </div>
+        <div class="analytics-chip">
+          <span>Most Active Course</span>
+          <strong>{{ analytics.top_course['course'] if analytics.top_course else 'N/A' }}</strong>
+        </div>
+      </div>
+      {% if course_stats %}
+      <div class="chart-wrap">
+        <div style="width:220px;height:220px;position:relative;">
+          <canvas id="courseChart"></canvas>
+        </div>
+        <div class="chart-legend" id="chart-legend"></div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="admin-card">
+    <div class="card-header-blue">Announcements</div>
+    <div class="card-body">
+      <form method="post" action="{{ url_for('post_announcement') }}">
+        <label class="ann-label">New Announcement</label>
+        <textarea name="content" class="ann-textarea" rows="4" placeholder="Write an announcement..." required></textarea>
+        <button type="submit" class="btn-submit-ann">Submit</button>
+      </form>
+      <h2 class="ann-title">Posted Announcements</h2>
+      {% for ann in announcements %}
+      <div class="ann-item">
+        <div class="ann-meta">
+          <span>CCS Admin | {{ ann.created_at[:10] }}</span>
+          <form method="post" action="{{ url_for('delete_announcement', aid=ann.id) }}" style="display:inline">
+            <button type="submit" class="btn-ann-delete" title="Delete">x</button>
+          </form>
+        </div>
+        <p class="ann-content">{{ ann.content }}</p>
+      </div>
+      {% else %}
+      <p style="color:#888;font-size:.84rem;text-align:center;padding:1rem 0;">No announcements yet.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_script %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script>
+  const courseData = {{ course_stats | tojson }};
+  const colors = ['#19335c','#d4a720','#365f9a','#4f8b6a','#c96c55','#6f87b4','#8fa3bc'];
+  if (courseData && courseData.length) {
+    new Chart(document.getElementById('courseChart').getContext('2d'), {
+      type: 'pie',
+      data: {
+        labels: courseData.map(s => s.course || 'N/A'),
+        datasets: [{
+          data: courseData.map(s => s.cnt),
+          backgroundColor: colors,
+          borderWidth: 3,
+          borderColor: '#fff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: { legend: { display: false } },
+        animation: { duration: 600 }
+      }
+    });
+    document.getElementById('chart-legend').innerHTML = courseData.map((s,i) =>
+      `<div class="legend-item">
+        <span class="legend-dot" style="background:${colors[i%colors.length]}"></span>
+        ${s.course || 'N/A'}
+       </div>`
+    ).join('');
+  }
+</script>
+<style>
+  .analytics-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:.75rem; margin-top:1rem; }
+  .analytics-chip { padding:.9rem; border-radius:12px; background:#f5f8fb; border:1px solid #d8e1ec; }
+  .analytics-chip span { display:block; font-size:.74rem; color:#7c8ba0; text-transform:uppercase; letter-spacing:.08em; margin-bottom:.35rem; }
+  .analytics-chip strong { font-size:1.1rem; color:#19335c; }
+  @media (max-width: 900px) {
+    .analytics-grid { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}

@@ -1,0 +1,540 @@
+{% extends "base.html" %}
+{% block title %}History - CCS Monitoring{% endblock %}
+{% block content %}
+<div class="page-wrap">
+  <h1 class="page-heading">Sit-in History and Feedback</h1>
+
+  {% set completed_logs = logs|selectattr('status', 'equalto', 'Done')|list %}
+  <div class="history-overview">
+    <section class="history-panel history-current-panel">
+      <div class="history-panel-head">
+        <div>
+          <h2>Current Session</h2>
+          <p>Latest active, approved, or pending laboratory booking</p>
+        </div>
+      </div>
+      {% if current_session %}
+      <div class="history-current-grid">
+        <div class="history-current-item">
+          <span>Laboratory</span>
+          <strong>Lab {{ current_session.lab_room }}</strong>
+        </div>
+        <div class="history-current-item">
+          <span>PC</span>
+          <strong>PC {{ current_session.pc_number or 'N/A' }}</strong>
+        </div>
+        <div class="history-current-item">
+          <span>Status</span>
+          <strong class="history-status-pill status-{{ current_session.status|lower }}">{{ current_session.status }}</strong>
+        </div>
+        <div class="history-current-item">
+          <span>Time In</span>
+          <strong>{{ current_session.time_in[:16] if current_session.time_in else '-' }}</strong>
+        </div>
+        <div class="history-current-item">
+          <span>Time Out</span>
+          <strong>{{ current_session.time_out[:16] if current_session.time_out else '-' }}</strong>
+        </div>
+      </div>
+      {% else %}
+      <div class="history-empty-state">No active laboratory session right now.</div>
+      {% endif %}
+    </section>
+
+    <section class="history-panel history-summary-panel">
+      <div class="history-panel-head">
+        <div>
+          <h2>Your Sit-in Summary</h2>
+          <p>Track your lab usage and session trends at a glance</p>
+        </div>
+        <div class="history-panel-actions">
+          <a href="{{ url_for('student_reservation') }}" class="history-panel-link">Open Reservation</a>
+          {% if completed_logs %}
+          <button type="button" class="history-panel-link" onclick="openFeedbackModal({{ completed_logs[0].id }}, {{ (completed_logs[0].feedback_text or '')|tojson }}, {{ completed_logs[0].rating or 0 }})">Give Feedback</button>
+          {% endif %}
+        </div>
+      </div>
+      <div class="history-summary-grid">
+        <div class="history-summary-item">
+          <span>Total Sit-in Hours</span>
+          <strong>{{ sit_in_summary.total_hours }} hrs</strong>
+        </div>
+        <div class="history-summary-item">
+          <span>No. of Sessions</span>
+          <strong>{{ sit_in_summary.total_sessions }}</strong>
+        </div>
+        <div class="history-summary-item">
+          <span>Average Duration</span>
+          <strong>{{ sit_in_summary.avg_duration }} hrs</strong>
+        </div>
+        <div class="history-summary-item">
+          <span>Longest Session</span>
+          <strong>{{ sit_in_summary.longest_session }} hrs</strong>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="hist-toolbar history-table-toolbar">
+    <div class="hist-toolbar-left">
+      <label class="hist-per-page">
+        <select id="per-page" onchange="changePerPage(this.value)">
+          <option value="10" {% if per_page==10 %}selected{% endif %}>10</option>
+          <option value="25" {% if per_page==25 %}selected{% endif %}>25</option>
+          <option value="50" {% if per_page==50 %}selected{% endif %}>50</option>
+        </select>
+        entries per page
+      </label>
+    </div>
+  </div>
+
+  <div class="hist-table-wrap">
+    <table class="hist-table">
+      <thead>
+        <tr>
+          <th>ID Number</th>
+          <th>Name</th>
+          <th>Purpose</th>
+          <th>Laboratory</th>
+          <th>PC</th>
+          <th>Time In</th>
+          <th>Time Out</th>
+          <th>Status</th>
+          <th>Feedback</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td>{{ log.id_number }}</td>
+          <td>{{ log.first_name }} {{ log.last_name }}</td>
+          <td>{{ log.purpose or '-' }}</td>
+          <td>{{ log.lab_room or '-' }}</td>
+          <td>{{ log.pc_number or '-' }}</td>
+          <td>{{ log.time_in[:16] if log.time_in else '-' }}</td>
+          <td>{{ log.time_out[:16] if log.time_out else '-' }}</td>
+          <td>
+            {% if log.status == 'Active' %}
+              <span class="hist-status hist-status-active">Currently in use</span>
+            {% elif log.status == 'Pending' %}
+              <span class="hist-status hist-status-pending">Pending</span>
+            {% elif log.status == 'Approved' %}
+              <span class="hist-status hist-status-approved">Reserved</span>
+            {% else %}
+              <span class="hist-status hist-status-done">Done</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="feedback-cell">
+              {% if log.feedback_text %}
+              <div class="feedback-preview">{{ log.rating }}/5 - {{ log.feedback_text }}</div>
+              {% else %}
+              <span class="hist-feedback-empty">No feedback yet</span>
+              {% endif %}
+              {% if log.status == 'Done' %}
+              <button class="hist-feedback-btn" onclick='openFeedbackModal({{ log.id }}, {{ (log.feedback_text or "") | tojson }}, {{ log.rating or 0 }})'>
+                {% if log.feedback_text %}Edit{% else %}Add{% endif %}
+              </button>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9" class="hist-no-data">No data available</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="hist-pagination-row">
+    <span class="hist-count">
+      {% if total > 0 %}
+        Showing {{ (page-1)*per_page+1 }} to {{ [(page)*per_page, total]|min }} of {{ total }} entries
+      {% else %}
+        Showing 0 entries
+      {% endif %}
+    </span>
+    <div class="hist-pages">
+      <a class="hist-pg {% if page==1 %}disabled{% endif %}" href="{{ url_for('student_history', page=1, per_page=per_page, search=search) }}">First</a>
+      <a class="hist-pg {% if page==1 %}disabled{% endif %}" href="{{ url_for('student_history', page=page-1 if page>1 else 1, per_page=per_page, search=search) }}">Prev</a>
+      {% for p in range(1, total_pages+1) %}
+        <a class="hist-pg {% if p==page %}active{% endif %}" href="{{ url_for('student_history', page=p, per_page=per_page, search=search) }}">{{ p }}</a>
+      {% endfor %}
+      <a class="hist-pg {% if page==total_pages or total_pages==0 %}disabled{% endif %}" href="{{ url_for('student_history', page=page+1 if page<total_pages else total_pages, per_page=per_page, search=search) }}">Next</a>
+      <a class="hist-pg {% if page==total_pages or total_pages==0 %}disabled{% endif %}" href="{{ url_for('student_history', page=total_pages, per_page=per_page, search=search) }}">Last</a>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="feedback-modal" onclick="if(event.target.id=='feedback-modal')closeFeedbackModal()">
+  <div class="modal-box hist-modal">
+    <div class="modal-header">
+      <h3>Session Feedback</h3>
+      <button class="modal-close" onclick="closeFeedbackModal()">x</button>
+    </div>
+    <form id="feedback-form" method="post" action="#">
+      <div class="modal-body">
+        <div class="fb-header">
+          <div>
+            <p class="fb-kicker">Give Feedback</p>
+            <h4 class="fb-title">Rate Your Sit-in Session</h4>
+            <p class="fb-sub">Tell us what worked well and how we can improve your lab experience.</p>
+          </div>
+        </div>
+
+        <div class="fb-rating-row">
+          <span class="fb-label">Your Rating</span>
+          <div class="fb-stars" role="radiogroup" aria-label="Session rating">
+            {% for star in range(1,6) %}
+            <button type="button" class="fb-star" data-value="{{ star }}" aria-label="{{ star }} star" aria-pressed="false">★</button>
+            {% endfor %}
+          </div>
+          <input type="hidden" name="rating" id="feedback-rating" value="5" required>
+        </div>
+
+        <div class="hist-form-field">
+          <label>Feedback</label>
+          <textarea name="feedback_text" id="feedback-text" rows="5" placeholder="Provide a detailed review..." required></textarea>
+          <div class="fb-hint">Focus on lab availability, equipment, system flow, or reservation ease.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-gray" onclick="closeFeedbackModal()">Cancel</button>
+        <button type="submit" class="btn-blue">Submit Feedback</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+  .page-wrap { padding:1.5rem 1.8rem; max-width: 1280px; margin: 0 auto; }
+  .page-heading { font-size:1.9rem; font-weight:700; color: var(--text); text-align:center; margin-bottom:1.4rem; }
+  .hist-toolbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:.9rem; flex-wrap:wrap; gap:.6rem; }
+  .hist-per-page { font-size:.85rem; color: var(--text-2); display:flex; align-items:center; gap:.4rem; }
+  .hist-per-page select { padding:.3rem .5rem; border:1.5px solid var(--border-soft); border-radius:8px; font-size:.85rem; outline:none; background: var(--surface); color: var(--text); }
+  .hist-table-wrap { overflow-x:auto; border-radius:16px; border:1px solid var(--border-soft); background: var(--surface); }
+  .hist-table { width:100%; border-collapse:collapse; font-size:.87rem; }
+  .hist-table thead tr { background: var(--surface-2); color: var(--text-2); }
+  .hist-table th { padding:.8rem 1rem; text-align:left; font-weight:600; font-size:.78rem; white-space:nowrap; text-transform: uppercase; letter-spacing: .08em; color: var(--text-2); border-bottom:1px solid var(--border-soft); }
+  .hist-table td { padding:.85rem 1rem; border-bottom:1px solid var(--border-soft); color: var(--text); vertical-align: top; background: var(--surface); }
+  .hist-table tbody tr:hover { background: var(--surface-3); }
+  .hist-no-data { text-align:center; color: var(--text-2); font-size:.88rem; padding:1.5rem; }
+  .feedback-cell { display:flex; flex-direction:column; gap:.45rem; min-width: 220px; }
+  .feedback-preview { font-size:.82rem; line-height:1.4; color: var(--text-2); }
+  .hist-feedback-empty { color: var(--text-3); font-size:.82rem; }
+  .hist-feedback-btn { align-self:flex-start; border:none; border-radius:999px; background: var(--nav-bg); color: var(--nav-text-active); padding:.35rem .75rem; font-size:.76rem; font-weight:700; cursor:pointer; }
+  .hist-status { display:inline-flex; align-items:center; padding:.25rem .6rem; border-radius:999px; font-size:.74rem; font-weight:700; }
+  .hist-status-active { background:#dcfce7; color:#166534; }
+  .hist-status-pending { background:#fef3c7; color:#92400e; }
+  .hist-status-approved { background:#dbeafe; color:#1e40af; }
+  .hist-status-done { background:#e5e7eb; color:#6b7280; }
+  .hist-pagination-row { display:flex; justify-content:space-between; align-items:center; margin-top:1rem; flex-wrap:wrap; gap:.5rem; }
+  .hist-count { font-size:.83rem; color: var(--text-2); }
+  .hist-pages { display:flex; gap:.35rem; flex-wrap: wrap; }
+  .hist-pg { display:inline-flex; align-items:center; justify-content:center; min-width:34px; height:34px; padding:0 .65rem; border-radius:8px; font-size:.83rem; font-weight:600; text-decoration:none; color: var(--text); background: var(--surface-2); }
+  .hist-pg.active { background: var(--yellow); color: var(--bg); }
+  .hist-pg.disabled { opacity:.35; pointer-events:none; }
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: var(--modal-backdrop);
+    backdrop-filter: blur(5px);
+    z-index: 9000;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box {
+    width: 100%;
+    max-width: 520px;
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: 18px;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+  }
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.15rem .9rem;
+    border-bottom: 1px solid var(--border-soft);
+    background: var(--surface-2);
+  }
+  .modal-header h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .modal-close {
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 50%;
+    background: var(--surface-2);
+    color: var(--text-2);
+    font-size: .95rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-close:hover { background: var(--surface-3); }
+  .modal-body { padding: 1.15rem; }
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: .65rem;
+    padding: .95rem 1.15rem 1.1rem;
+    border-top: 1px solid var(--border-soft);
+    background: var(--surface-2);
+  }
+  .btn-gray, .btn-blue {
+    border: none;
+    border-radius: 10px;
+    padding: .65rem 1rem;
+    font: inherit;
+    font-size: .86rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .btn-gray {
+    background: var(--surface-2);
+    color: var(--text);
+  }
+  .btn-gray:hover { background: var(--surface-3); }
+  .btn-blue {
+    background: var(--violet);
+    color: var(--nav-text-active);
+    box-shadow: 0 10px 24px rgba(25, 51, 92, .18);
+  }
+  .btn-blue:hover { background: #254877; }
+  .hist-modal { max-width: 520px; }
+  .hist-form-field { display:flex; flex-direction:column; gap:.35rem; margin-bottom:.9rem; }
+  .hist-form-field label { font-size:.8rem; font-weight:700; color: var(--text-2); text-transform: uppercase; letter-spacing: .08em; }
+  .hist-form-field textarea {
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: .85rem 1rem;
+    font: inherit;
+    background: var(--input-bg);
+    color: var(--text);
+    outline: none;
+    min-height: 140px;
+    resize: vertical;
+  }
+  .hist-form-field textarea:focus {
+    border-color: var(--violet);
+    box-shadow: 0 0 0 4px rgba(54, 95, 154, .12);
+  }
+  .fb-hint { font-size:.82rem; color: var(--text-2); line-height:1.4; }
+  .fb-header { display:flex; flex-direction:column; gap:.35rem; margin-bottom:1.2rem; }
+  .fb-kicker { margin:0; font-size:.78rem; text-transform:uppercase; letter-spacing:.14em; color: var(--text-2); }
+  .fb-title { margin:.2rem 0 0; font-size:1.25rem; font-weight:800; color: var(--text); }
+  .fb-sub { margin:.45rem 0 0; font-size:.92rem; color: var(--text-2); line-height:1.6; }
+  .fb-rating-row { display:flex; flex-direction:column; gap:.5rem; margin-bottom:1rem; }
+  .fb-label { font-size:.82rem; font-weight:700; color: var(--text-2); }
+  .fb-stars { display:flex; gap:.4rem; }
+  .fb-star {
+    width: 46px;
+    height: 46px;
+    border: 1px solid var(--border-soft);
+    border-radius: 14px;
+    background: var(--surface);
+    color: #c79c2f; /* subtle gold for default star */
+    font-size: 1.35rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: all .18s ease;
+  }
+  .fb-star:hover,
+  .fb-star.active {
+    border-color: #f5c542;
+    color: #f5c542; /* bright gold when hovered/selected */
+    background: var(--surface-2);
+    box-shadow: 0 6px 18px rgba(245,197,66,0.12);
+  }
+
+  /* Dark theme tweaks to keep gold visible */
+  :root[data-theme="dark"] .fb-star {
+    color: #b78a28;
+    background: #111827;
+    border-color: rgba(255,255,255,0.04);
+  }
+  :root[data-theme="dark"] .fb-star.active,
+  :root[data-theme="dark"] .fb-star:hover {
+    color: #f5c542;
+    border-color: #f5c542;
+    background: rgba(245,197,66,0.06);
+  }
+  .history-overview {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    gap: 1rem;
+    margin: 1.1rem 0 1rem;
+  }
+  .history-panel {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: 18px;
+    padding: 1.2rem;
+    box-shadow: 0 10px 30px rgba(70, 93, 121, 0.08);
+  }
+  .history-panel-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .history-panel-actions {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+  }
+  .history-panel-head h2 {
+    margin: 0;
+    font-size: 1.05rem;
+    color: var(--text);
+  }
+  .history-panel-head p {
+    margin: .22rem 0 0;
+    color: var(--text-2);
+    font-size: .84rem;
+    line-height: 1.45;
+  }
+  .history-panel-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: .62rem .9rem;
+    border-radius: 10px;
+    background: var(--violet);
+    color: var(--nav-text-active);
+    text-decoration: none;
+    font-weight: 700;
+    font-size: .84rem;
+    white-space: nowrap;
+  }
+  .history-current-grid,
+  .history-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: .8rem;
+  }
+  .history-current-item,
+  .history-summary-item {
+    padding: .95rem;
+    border-radius: 14px;
+    border: 1px solid var(--border-soft);
+    background: var(--surface-2);
+  }
+  .history-current-item span,
+  .history-summary-item span {
+    display: block;
+    font-size: .74rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--text-2);
+    margin-bottom: .35rem;
+  }
+  .history-current-item strong,
+  .history-summary-item strong {
+    color: var(--text);
+    font-size: 1rem;
+    line-height: 1.35;
+  }
+  .history-summary-item strong {
+    font-size: 1.2rem;
+  }
+  .history-empty-state {
+    padding: 1rem;
+    border-radius: 14px;
+    border: 1px dashed var(--border);
+    background: var(--surface-2);
+    color: var(--text-2);
+  }
+  .history-status-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: .3rem .65rem;
+    border-radius: 999px;
+    font-size: .74rem;
+    font-weight: 700;
+    text-transform: capitalize;
+  }
+  .history-status-pill.status-active { background: #dcfce7; color: #166534; }
+  .history-status-pill.status-pending { background: #fef3c7; color: #92400e; }
+  .history-status-pill.status-approved { background: #dbeafe; color: #1e40af; }
+  .history-status-pill.status-done { background: #e5e7eb; color: #6b7280; }
+  .history-table-toolbar {
+    margin-top: 1rem;
+  }
+  .history-table-toolbar .hist-toolbar-left {
+    width: 100%;
+    display: flex;
+    justify-content: flex-start;
+  }
+  .history-table-toolbar .hist-per-page {
+    color: var(--text-2);
+  }
+  .history-table-toolbar .hist-per-page select {
+    background: var(--surface);
+    color: var(--text);
+  }
+  @media (max-width: 900px) {
+    .history-overview {
+      grid-template-columns: 1fr;
+    }
+    .history-panel-head {
+      flex-direction: column;
+    }
+    .history-panel-link {
+      align-self: flex-start;
+    }
+  }
+</style>
+
+<script>
+  function changePerPage(val) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('per_page', val);
+    url.searchParams.set('page', 1);
+    window.location.href = url.toString();
+  }
+  function openFeedbackModal(id, feedbackText, rating) {
+    const score = rating && rating !== '0' ? Number(rating) : 5;
+    document.getElementById('feedback-form').action = '/history/feedback/' + id;
+    document.getElementById('feedback-text').value = feedbackText || '';
+    document.getElementById('feedback-rating').value = score;
+    setFeedbackStars(score);
+    document.getElementById('feedback-modal').classList.add('open');
+  }
+  function closeFeedbackModal() {
+    document.getElementById('feedback-modal').classList.remove('open');
+  }
+  function setFeedbackStars(value) {
+    const stars = document.querySelectorAll('.fb-star');
+    stars.forEach((button, index) => {
+      const starValue = index + 1;
+      button.classList.toggle('active', starValue <= value);
+      button.setAttribute('aria-pressed', starValue <= value ? 'true' : 'false');
+    });
+    document.getElementById('feedback-rating').value = value;
+  }
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.fb-star').forEach(button => {
+      button.addEventListener('click', () => {
+        const value = Number(button.dataset.value);
+        setFeedbackStars(value);
+      });
+    });
+  });
+</script>
+{% include "student_floating_controls.html" %}
+{% endblock %}

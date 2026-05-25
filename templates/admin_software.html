@@ -1,0 +1,914 @@
+{% extends "admin_base.html" %}
+{% block title %}Software Management - CCS Admin{% endblock %}
+{% block content %}
+<div class="page-card software-page">
+  <div class="page-head">
+    <h1 class="page-title">Software Management</h1>
+  </div>
+
+  <!-- Register & List Layout -->
+  <div class="software-layout">
+    <!-- Left Panel: Register Software -->
+    <div class="register-panel">
+      <div class="panel-header">
+        <h2 class="panel-title">Register Software</h2>
+      </div>
+      <form method="post" action="{{ url_for('admin_import_software') }}" class="register-form">
+        <div class="form-group">
+          <label for="software-name">Software / File Name</label>
+          <input type="text" id="software-name" name="software_name" class="form-input" placeholder="e.g. Visual Studio Code 1.88" required>
+        </div>
+
+        <div class="form-group">
+          <label for="software-category">Category</label>
+          <select id="software-category" name="software_category" class="form-input" required>
+            <option value="">Select category</option>
+            <option value="Development">Development</option>
+            <option value="Web & Database">Web & Database</option>
+            <option value="Networking">Networking</option>
+            <option value="Virtualization">Virtualization</option>
+            <option value="Productivity">Productivity</option>
+            <option value="Engineering">Engineering</option>
+            <option value="General">General</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="software-description">Description</label>
+          <textarea id="software-description" name="software_description" class="form-input form-textarea" placeholder="Brief description of this software" rows="3"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="group-label">Available in Labs</label>
+          <div class="lab-check-grid">
+            {% for lab in labs %}
+            <label class="lab-check">
+              <input type="checkbox" name="available_labs[]" value="{{ lab }}" checked>
+              <span>Lab {{ lab }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <button type="submit" class="btn-register">Register Software</button>
+      </form>
+    </div>
+
+    <!-- Right Panel: Registered Software List -->
+    <div class="list-panel">
+      <div class="panel-header">
+        <h2 class="panel-title">Registered Software</h2>
+        <div class="search-wrapper">
+          <input type="text" id="software-search" class="search-input" placeholder="Search software...">
+          <span class="search-icon"></span>
+        </div>
+      </div>
+
+      <div class="software-list">
+        {% for soft in software %}
+        <div class="software-item" data-name="{{ soft.name|lower }}">
+          <div class="software-item-header">
+            <div>
+              <h3 class="software-item-name">{{ soft.name }}</h3>
+              <p class="software-item-category">{{ soft.category }}</p>
+            </div>
+            <div style="display:flex;gap:0.5rem;align-items:flex-start;">
+              <button type="button" class="btn-default" onclick="openSoftwareModal({{ soft.id }}, '{{ soft.name }}', '{{ soft.description }}', '{{ soft.category }}', '{{ soft.available_labs }}', {{ soft.is_enabled }})">EDIT</button>
+              <form method="post" action="{{ url_for('admin_delete_software', sid=soft.id) }}" onsubmit="return confirm('Delete this software?');">
+                <button type="submit" class="btn-delete" title="Delete">🗑</button>
+              </form>
+            </div>
+          </div>
+          {% if soft.description %}
+          <p class="software-item-desc">{{ soft.description }}</p>
+          {% endif %}
+          <div class="software-item-labs">
+            {% if soft.available_labs %}
+            {% for lab in soft.available_labs.split(',') %}
+            {% set lab_label = lab.strip() %}
+            {% if lab_label %}
+            <span class="lab-chip">Lab {{ lab_label }}</span>
+            {% endif %}
+            {% endfor %}
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Lab Software Overview -->
+  <div class="lab-overview-section">
+    <h2 class="overview-title">Lab Software Overview</h2>
+    <div class="lab-overview-grid">
+      {% for lab in labs %}
+      {% set count = lab_counts[lab]|default(0) %}
+      <div class="lab-overview-card">
+        <div class="lab-overview-number">{{ count }}</div>
+        <div class="lab-overview-label">LAB {{ lab }}</div>
+        <div class="lab-overview-desc">SOFTWARE</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="software-modal-overlay" id="software-modal"
+  onclick="if(event.target.id==='software-modal')closeSoftwareModal()">
+  <div class="software-modal-box">
+    <div class="software-modal-header">
+      <div>
+        <h3>Edit Software</h3>
+        <p>Update the software details and choose which labs can use it.</p>
+      </div>
+      <button type="button" class="software-modal-close" onclick="closeSoftwareModal()">×</button>
+    </div>
+
+    <form method="post" id="software-edit-form" action="#">
+      <div class="software-modal-body">
+        <div class="modal-field">
+          <label for="software-edit-name">Name</label>
+          <input type="text" id="software-edit-name" name="name" class="modal-input" required>
+        </div>
+        <div class="modal-field">
+          <label for="software-edit-category">Category</label>
+          <input type="text" id="software-edit-category" name="category" class="modal-input" placeholder="General">
+        </div>
+        <div class="modal-field">
+          <label for="software-edit-description">Description</label>
+          <textarea id="software-edit-description" name="description" class="modal-input modal-textarea"
+            rows="4"></textarea>
+        </div>
+
+        <div class="upload-labs lab-picker">
+          <div class="upload-labs-head">
+            <strong>Available labs</strong>
+            <span>Select one or more labs.</span>
+          </div>
+          <div class="lab-check-grid">
+            {% for lab in labs %}
+            <label class="lab-check">
+              <input type="checkbox" name="available_labs[]" value="{{ lab }}">
+              <span>Lab {{ lab }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <label class="status-toggle">
+          <input type="checkbox" id="software-edit-enabled" name="is_enabled" value="1">
+          <span>Enabled for students</span>
+        </label>
+      </div>
+
+      <div class="software-modal-footer">
+        <button type="button" class="btn-gray" onclick="closeSoftwareModal()">Cancel</button>
+        <button type="submit" class="btn-blue">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+  .software-page {
+    background: #fff;
+    border: 1px solid #d8e1ec;
+    border-radius: 18px;
+    padding: 2rem;
+    box-shadow: 0 10px 30px rgba(70, 93, 121, 0.08);
+  }
+
+  .page-head {
+    margin-bottom: 2rem;
+    text-align: center;
+  }
+
+  .page-title {
+    margin: 0;
+    font-size: 2rem;
+    color: #19335c;
+    font-weight: 700;
+  }
+
+  /* Software Layout (Two Column) */
+  .software-layout {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 2rem;
+    margin-bottom: 3rem;
+  }
+
+  .register-panel,
+  .list-panel {
+    border: 1px solid #d8e1ec;
+    border-radius: 16px;
+    padding: 1.5rem;
+    background: #f8fbff;
+  }
+
+  .panel-header {
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .panel-title {
+    margin: 0;
+    font-size: 1.2rem;
+    color: #19335c;
+    font-weight: 700;
+  }
+
+  /* Register Form */
+  .register-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .form-group label,
+  .group-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #19335c;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .form-input {
+    padding: 0.8rem;
+    border: 1.5px solid #d8e1ec;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    outline: none;
+    transition: border 0.2s, box-shadow 0.2s;
+    background: white;
+  }
+
+  .form-input:focus {
+    border-color: #365f9a;
+    box-shadow: 0 0 0 3px rgba(54, 95, 154, 0.12);
+  }
+
+  .form-textarea {
+    min-height: 100px;
+    resize: vertical;
+  }
+
+  .btn-register {
+    padding: 1rem;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #10c876 0%, #08a659 100%);
+    color: white;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+    margin-top: 0.5rem;
+  }
+
+  .btn-register:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(16, 200, 118, 0.25);
+    filter: brightness(1.05);
+  }
+
+  /* Software List */
+  .software-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    max-height: 500px;
+    overflow-y: auto;
+  }
+
+  .software-item {
+    border: 1px solid #d8e1ec;
+    border-radius: 12px;
+    padding: 1rem;
+    background: white;
+    transition: all 0.2s ease;
+  }
+
+  .software-item:hover {
+    border-color: #365f9a;
+    box-shadow: 0 4px 12px rgba(54, 95, 154, 0.1);
+  }
+
+  .software-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.8rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .software-item-name {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #19335c;
+  }
+
+  .software-item-category {
+    margin: 0.2rem 0 0;
+    font-size: 0.75rem;
+    color: #6a7890;
+    font-weight: 600;
+  }
+
+  .software-item-desc {
+    margin: 0.5rem 0;
+    font-size: 0.8rem;
+    color: #6a7890;
+    line-height: 1.4;
+  }
+
+  .software-item-labs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .btn-default {
+    padding: 0.4rem 0.8rem;
+    border: 1px solid #d8e1ec;
+    border-radius: 8px;
+    background: white;
+    color: #6a7890;
+    font-size: 0.7rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .btn-default:hover {
+    border-color: #365f9a;
+    color: #365f9a;
+  }
+
+  .btn-delete {
+    padding: 0.35rem 0.6rem;
+    border: none;
+    border-radius: 8px;
+    background: #ff5c5c;
+    color: white;
+    font-size: 0.8rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn-delete:hover {
+    background: #e04343;
+  }
+
+  /* Search */
+  .search-wrapper {
+    position: relative;
+    width: 100%;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 0.7rem 0.8rem 0.7rem 2.2rem;
+    border: 1.5px solid #d8e1ec;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border 0.2s;
+  }
+
+  .search-input:focus {
+    border-color: #365f9a;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 0.7rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.9rem;
+    pointer-events: none;
+  }
+
+  /* Lab Checks */
+  .lab-check-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+
+  .lab-check {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0.7rem;
+    border-radius: 10px;
+    border: 1px solid #d8e1ec;
+    background: white;
+    color: #19335c;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .lab-check:hover {
+    border-color: #365f9a;
+    background: #edf3fb;
+  }
+
+  .lab-check input {
+    width: 16px;
+    height: 16px;
+    accent-color: #365f9a;
+    flex-shrink: 0;
+  }
+
+  .lab-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.3rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    background: #dbe7f7;
+    color: #365f9a;
+  }
+
+  /* Lab Overview Section */
+  .lab-overview-section {
+    margin-top: 3rem;
+    border-top: 1px solid #d8e1ec;
+    padding-top: 2rem;
+  }
+
+  .overview-title {
+    margin: 0 0 1.5rem;
+    font-size: 1.2rem;
+    color: #19335c;
+    font-weight: 700;
+  }
+
+  .lab-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .lab-overview-card {
+    border: 2px solid #d8e1ec;
+    border-radius: 14px;
+    padding: 1.8rem;
+    text-align: center;
+    background: linear-gradient(135deg, #f8fbff 0%, #eef4fb 100%);
+    transition: all 0.2s ease;
+  }
+
+  .lab-overview-card:hover {
+    border-color: #365f9a;
+    box-shadow: 0 8px 20px rgba(54, 95, 154, 0.1);
+  }
+
+  .lab-overview-number {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #10c876;
+    margin-bottom: 0.5rem;
+  }
+
+  .lab-overview-label {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #19335c;
+    margin-bottom: 0.3rem;
+  }
+
+  .lab-overview-desc {
+    font-size: 0.8rem;
+    color: #6a7890;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* Modal */
+  .software-modal-overlay {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(16, 30, 54, 0.55);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+  }
+
+  .software-modal-overlay.open {
+    display: flex;
+  }
+
+  .software-modal-box {
+    width: min(100%, 720px);
+    border-radius: 20px;
+    background: #fff;
+    border: 1px solid #d8e1ec;
+    box-shadow: 0 24px 60px rgba(16, 30, 54, 0.22);
+    overflow: hidden;
+  }
+
+  .software-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.2rem 1.35rem;
+    border-bottom: 1px solid #e5eaf3;
+  }
+
+  .software-modal-header h3 {
+    margin: 0;
+    color: #19335c;
+    font-size: 1.15rem;
+  }
+
+  .software-modal-header p {
+    margin: 0.25rem 0 0;
+    color: #6a7890;
+    font-size: 0.85rem;
+    line-height: 1.45;
+  }
+
+  .software-modal-close {
+    width: 38px;
+    height: 38px;
+    border: none;
+    border-radius: 12px;
+    background: #edf3fb;
+    color: #19335c;
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .software-modal-body {
+    display: grid;
+    gap: 0.95rem;
+    padding: 1.2rem 1.35rem;
+  }
+
+  .modal-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .modal-field label {
+    font-size: 0.76rem;
+    font-weight: 800;
+    color: #667085;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .modal-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.7rem 0.85rem;
+    border: 1.5px solid #dbe4ef;
+    border-radius: 10px;
+    font-size: 0.93rem;
+    font-family: inherit;
+    outline: none;
+    transition: border 0.2s, box-shadow 0.2s;
+  }
+
+  .modal-input:focus {
+    border-color: #365f9a;
+    box-shadow: 0 0 0 3px rgba(54, 95, 154, 0.12);
+  }
+
+  .modal-textarea {
+    min-height: 110px;
+    resize: vertical;
+  }
+
+  .lab-picker {
+    margin-top: 0.15rem;
+  }
+
+  .status-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.9rem 1rem;
+    border-radius: 14px;
+    background: #edf3fb;
+    border: 1px solid #d8e1ec;
+    color: #19335c;
+    font-weight: 700;
+  }
+
+  .status-toggle input {
+    width: 18px;
+    height: 18px;
+    accent-color: #365f9a;
+  }
+
+  .software-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.7rem;
+    padding: 1rem 1.35rem 1.35rem;
+    border-top: 1px solid #e5eaf3;
+  }
+
+  .btn-gray {
+    border: 1px solid #d0d8e5;
+    background: #f5f8fd;
+    color: #365f9a;
+    border-radius: 12px;
+    padding: 0.8rem 1rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .btn-blue {
+    border: none;
+    background: #365f9a;
+    color: white;
+    border-radius: 12px;
+    padding: 0.8rem 1.2rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .btn-blue:hover {
+    background: #2a4a7a;
+  }
+
+  /* Responsive */
+  @media (max-width: 1200px) {
+    .software-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .software-page {
+      padding: 1.5rem;
+    }
+
+    .software-layout {
+      gap: 1.5rem;
+    }
+
+    .lab-overview-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .software-modal-footer {
+      flex-direction: column-reverse;
+    }
+
+    .software-modal-footer .btn-gray,
+    .software-modal-footer .btn-blue {
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .page-title {
+      font-size: 1.5rem;
+    }
+
+    .lab-overview-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .lab-check-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<script>
+  (function () {
+    const searchInput = document.getElementById('software-search');
+    const softwareItems = document.querySelectorAll('.software-item');
+    const modal = document.getElementById('software-modal');
+    const editForm = document.getElementById('software-edit-form');
+    const editName = document.getElementById('software-edit-name');
+    const editCategory = document.getElementById('software-edit-category');
+    const editDescription = document.getElementById('software-edit-description');
+    const editEnabled = document.getElementById('software-edit-enabled');
+    const editLabChecks = modal ? modal.querySelectorAll('input[name="available_labs[]"]') : [];
+    const editActionTemplate = "{{ url_for('admin_edit_software', sid=0) }}";
+
+    // Search functionality
+    if (searchInput) {
+      searchInput.addEventListener('input', function () {
+        const query = this.value.toLowerCase();
+        softwareItems.forEach(function (item) {
+          const name = item.getAttribute('data-name');
+          if (name && name.includes(query)) {
+            item.style.display = '';
+          } else {
+            item.style.display = 'none';
+          }
+        });
+      });
+    }
+
+    function setCheckedLabs(checks, labsCsv, selectAllWhenEmpty) {
+      const labs = String(labsCsv || '')
+        .split(',')
+        .map(function (item) { return item.trim(); })
+        .filter(Boolean);
+      const selected = labs.length ? labs : (selectAllWhenEmpty ? Array.from(checks || []).map(function (box) { return box.value; }) : []);
+      Array.from(checks || []).forEach(function (box) {
+        box.checked = selected.includes(box.value);
+      });
+    }
+
+    window.openSoftwareModal = function (id, name, description, category, labsCsv, enabled) {
+      editForm.action = editActionTemplate.replace('/0', '/' + id);
+      editName.value = name || '';
+      editCategory.value = category || 'General';
+      editDescription.value = description || '';
+      editEnabled.checked = String(enabled) === '1' || enabled === 1;
+      setCheckedLabs(editLabChecks, labsCsv, true);
+      modal.classList.add('open');
+    };
+
+    window.closeSoftwareModal = function () {
+      modal.classList.remove('open');
+    };
+
+    window.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        closeSoftwareModal();
+      }
+    });
+  })();
+</script>
+<script>
+  (function(){
+    const registerForm = document.querySelector('.register-form');
+    const LABS = {{ labs|tojson }};
+    const deleteTemplate = "{{ url_for('admin_delete_software', sid=0) }}";
+    const editTemplate = "{{ url_for('admin_edit_software', sid=0) }}";
+
+    if (!registerForm) return;
+    return;
+
+    registerForm.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const btn = this.querySelector('button[type="submit"]');
+      if (btn) btn.disabled = true;
+      const url = this.action;
+      const fd = new FormData(this);
+      try {
+        await fetch(url, { method: 'POST', body: fd });
+      } catch (err) {
+        // ignore network errors; we'll still try to refresh data
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+
+      // Refresh software data from API and rebuild UI
+      try {
+        const resp = await fetch('{{ url_for('api_get_software') }}');
+        if (resp.ok) {
+          const software = await resp.json();
+          rebuildSoftwareList(software);
+          rebuildLabOverview(software);
+        }
+      } catch (err) {
+        console.error('Failed to refresh software list', err);
+      }
+    });
+
+    function rebuildSoftwareList(software) {
+      const container = document.querySelector('.software-list');
+      if (!container) return;
+      container.innerHTML = '';
+      software.forEach(function (soft) {
+        const item = document.createElement('div');
+        item.className = 'software-item';
+        item.setAttribute('data-name', (soft.name || '').toLowerCase());
+
+        const header = document.createElement('div');
+        header.className = 'software-item-header';
+
+        const left = document.createElement('div');
+        const title = document.createElement('h3');
+        title.className = 'software-item-name';
+        title.textContent = soft.name || '';
+        const cat = document.createElement('p');
+        cat.className = 'software-item-category';
+        cat.textContent = soft.category || '';
+        left.appendChild(title);
+        left.appendChild(cat);
+
+        const right = document.createElement('div');
+        right.style.display = 'flex';
+        right.style.gap = '0.5rem';
+        right.style.alignItems = 'flex-start';
+
+        const defaultBtn = document.createElement('button');
+        defaultBtn.type = 'button';
+        defaultBtn.className = 'btn-default';
+        defaultBtn.textContent = 'DEFAULT';
+        defaultBtn.addEventListener('click', function () {
+          const labsCsv = soft.available_labs || '';
+          openSoftwareModal(soft.id, soft.name || '', soft.description || '', soft.category || '', labsCsv, soft.is_enabled ? 1 : 0);
+        });
+
+        const deleteForm = document.createElement('form');
+        deleteForm.method = 'post';
+        deleteForm.onsubmit = function () { return confirm('Delete this software?'); };
+        deleteForm.action = deleteTemplate.replace('/0', '/' + (soft.id || 0));
+        const delBtn = document.createElement('button');
+        delBtn.type = 'submit';
+        delBtn.className = 'btn-delete';
+        delBtn.title = 'Delete';
+        delBtn.textContent = '🗑';
+        deleteForm.appendChild(delBtn);
+
+        right.appendChild(defaultBtn);
+        right.appendChild(deleteForm);
+
+        header.appendChild(left);
+        header.appendChild(right);
+
+        item.appendChild(header);
+
+        if (soft.description) {
+          const desc = document.createElement('p');
+          desc.className = 'software-item-desc';
+          desc.textContent = soft.description;
+          item.appendChild(desc);
+        }
+
+        const labsWrap = document.createElement('div');
+        labsWrap.className = 'software-item-labs';
+        if (soft.available_labs) {
+          soft.available_labs.split(',').map(function (s) { return s.trim(); }).filter(Boolean).forEach(function (l) {
+            const chip = document.createElement('span');
+            chip.className = 'lab-chip';
+            chip.textContent = 'Lab ' + l;
+            labsWrap.appendChild(chip);
+          });
+        }
+        item.appendChild(labsWrap);
+        container.appendChild(item);
+      });
+    }
+
+    function rebuildLabOverview(software) {
+      const grid = document.querySelector('.lab-overview-grid');
+      if (!grid) return;
+      const counts = {};
+      LABS.forEach(function (l) { counts[l] = 0; });
+      software.forEach(function (s) {
+        (s.available_labs || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean).forEach(function (lab) {
+          if (counts[lab] !== undefined) counts[lab] += 1;
+        });
+      });
+
+      // update number elements
+      const cards = grid.querySelectorAll('.lab-overview-card');
+      cards.forEach(function (card) {
+        const labelEl = card.querySelector('.lab-overview-label');
+        if (!labelEl) return;
+        const m = (labelEl.textContent || '').match(/LAB\s*(\d+)/i);
+        if (!m) return;
+        const lab = m[1];
+        const numEl = card.querySelector('.lab-overview-number');
+        if (numEl && counts[lab] !== undefined) {
+          numEl.textContent = counts[lab];
+        }
+      });
+    }
+  })();
+</script>
+{% endblock %}

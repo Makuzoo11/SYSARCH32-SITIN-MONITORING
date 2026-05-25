@@ -1,0 +1,57 @@
+<div class="notif-fab-wrap">
+  <button class="notif-fab" type="button" onclick="toggleNotifPanel()" aria-label="Notifications">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 22a2.5 2.5 0 0 0 2.3-1.5H9.7A2.5 2.5 0 0 0 12 22Zm7-4.5H5l1.5-1.8V11a5.5 5.5 0 1 1 11 0v4.7l1.5 1.8Z"/>
+    </svg>
+    {% if notifications|length %}
+    <span class="notif-count">{{ notifications|length }}</span>
+    {% endif %}
+  </button>
+  <button class="theme-toggle theme-fab-toggle" type="button" data-theme-toggle aria-label="Switch color theme">
+    <span class="theme-toggle-track" aria-hidden="true">
+      <span class="theme-toggle-thumb">
+        <img class="theme-toggle-img" data-theme-icon
+             src="{{ url_for('static', filename='images/theme-sun.png') }}"
+             data-light-src="{{ url_for('static', filename='images/theme-sun.png') }}"
+             data-dark-src="{{ url_for('static', filename='images/theme-moon.png') }}"
+             alt=""/>
+      </span>
+    </span>
+    <span class="theme-toggle-text">Light</span>
+  </button>
+
+  <div class="notif-panel" id="notif-panel">
+    <div class="notif-panel-head">
+      <h3>Notifications and Alerts</h3>
+      <button type="button" class="notif-close" onclick="closeNotifPanel()">x</button>
+    </div>
+    <div class="notif-panel-list">
+      {% for note in notifications %}
+      <article class="notif-item note-{{ note.category }}">
+        <div class="stack-meta">{{ note.title }} | {{ note.created_at[:16] }}</div>
+        <p>{{ note.message }}</p>
+      </article>
+      {% else %}
+      <p class="empty-note">No notifications yet.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<script>
+  function toggleNotifPanel() {
+    document.getElementById('notif-panel').classList.toggle('open');
+  }
+
+  function closeNotifPanel() {
+    document.getElementById('notif-panel').classList.remove('open');
+  }
+
+  document.addEventListener('click', function(event) {
+    const panel = document.getElementById('notif-panel');
+    const wrap = document.querySelector('.notif-fab-wrap');
+    if (panel && wrap && !wrap.contains(event.target)) {
+      panel.classList.remove('open');
+    }
+  });
+</script>

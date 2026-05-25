@@ -1,0 +1,466 @@
+{% extends "base.html" %}
+{% block title %}Reservation - CCS Monitoring{% endblock %}
+{% block content %}
+
+<!-- ── PAGE BODY ─────────────────────────────────────────── -->
+<div class="rv-page">
+
+  <!-- Header -->
+  <div class="rv-hero">
+    <div>
+      <h1 class="rv-hero-title">Lab Reservation</h1>
+      <p class="rv-hero-sub">Reserve a PC in any available CCS laboratory.</p>
+    </div>
+    {% if not reservation_open %}
+    <div class="rv-closed-badge">Reservations Closed</div>
+    {% endif %}
+  </div>
+
+  {% if not reservation_open %}
+  <div class="rv-alert-bar">
+    ⚠️ Reservations are currently disabled by the administrator. Please check back later.
+  </div>
+  {% endif %}
+
+  <!-- Stats strip -->
+  <div class="rv-stats">
+    <div class="rv-stat">
+      <span>Remaining Sessions</span>
+      <strong>{{ user.sessions_remaining }}</strong>
+    </div>
+    <div class="rv-stat">
+      <span>Reservation Points</span>
+      <strong>{{ user.reservation_points }}</strong>
+    </div>
+    <div class="rv-stat">
+      <span>Reward Points</span>
+      <strong>{{ user.reward_points }}</strong>
+    </div>
+    <div class="rv-stat">
+      <span>Active Labs</span>
+      <strong>{{ labs|length }}</strong>
+    </div>
+  </div>
+
+  <!-- Available Labs Overview -->
+  <div class="rv-section-title">Available Laboratories</div>
+  <div class="rv-labs-grid">
+    {% for lab in labs %}
+    {% set lab_data = booking_map.get(lab, {}) %}
+    {% set total = lab_capacities.get(lab, 40) %}
+    {% set occupied = lab_data.values()|selectattr('state','ne','available')|list|length %}
+    {% set free = total - occupied %}
+    <div class="rv-lab-card" onclick="{% if reservation_open %}openReservationModal('{{ lab }}'){% endif %}" style="{% if not reservation_open %}cursor:default;{% endif %}">
+      <div class="rv-lab-num">Lab {{ lab }}</div>
+      <div class="rv-lab-bars">
+        <div class="rv-bar-wrap">
+          <div class="rv-bar-fill" style="width:{{ ((occupied/total)*100)|round }}%"></div>
+        </div>
+      </div>
+      <div class="rv-lab-meta">
+        <span class="rv-lab-free">{{ free }} free</span>
+        <span class="rv-lab-total">/ {{ total }} PCs</span>
+      </div>
+      {% if reservation_open %}
+      <div class="rv-lab-cta">Click to reserve →</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Software Available -->
+  {% if software_list %}
+  <div class="rv-section-title" style="margin-top:2rem;">Available Lab Software</div>
+  <div class="rv-sw-wrap">
+    {% set categories = software_list|map(attribute='category')|unique|list %}
+    {% for cat in categories %}
+    <div class="rv-sw-group">
+      <div class="rv-sw-group-label">{{ cat }}</div>
+      <div class="rv-sw-chips">
+        {% for sw in software_list if sw.category == cat %}
+        <span class="rv-sw-chip">{{ sw.name }}</span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</div><!-- /rv-page -->
+
+<!-- ── RESERVATION MODAL ─────────────────────────────────── -->
+<div class="rv-modal-overlay" id="rv-modal" onclick="if(event.target.id==='rv-modal')closeReservationModal()">
+  <div class="rv-modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+
+    <div class="rv-modal-header">
+      <div>
+        <h2 class="rv-modal-title" id="modal-title">Reserve a PC</h2>
+        <p class="rv-modal-sub">Fill in the details below to submit your reservation request.</p>
+      </div>
+      <button class="rv-modal-close" onclick="closeReservationModal()" aria-label="Close">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+
+    <form method="post" action="{{ url_for('student_reservation') }}" onsubmit="return validatePcSelection()" class="rv-form">
+
+      <div class="rv-form-grid">
+
+        <div class="rv-field">
+          <label class="rv-label">ID Number</label>
+          <input type="text" class="rv-input rv-readonly" value="{{ user.id_number }}" readonly>
+          <input type="hidden" name="id_number" value="{{ user.id_number }}">
+        </div>
+
+        <div class="rv-field">
+          <label class="rv-label">Student Name</label>
+          <input type="text" class="rv-input rv-readonly" value="{{ user.first_name }} {{ user.last_name }}" readonly>
+        </div>
+
+        <div class="rv-field rv-field-full">
+          <label class="rv-label">Purpose</label>
+          <select name="purpose" class="rv-input" required>
+            <option value="">-- Select Purpose --</option>
+            <option value="C Programming">C Programming</option>
+            <option value="Java">Java</option>
+            <option value="C#">C#</option>
+            <option value=".Net">.Net</option>
+            <option value="Python">Python</option>
+            <option value="Web Development">Web Development</option>
+            <option value="Database">Database</option>
+            <option value="Research">Research</option>
+            <option value="Others">Others</option>
+          </select>
+        </div>
+
+        <div class="rv-field">
+          <label class="rv-label">Laboratory</label>
+          <select name="lab" id="rv-lab-select" class="rv-input" required onchange="renderPcGrid()">
+            {% for lab in labs %}
+            <option value="{{ lab }}" {% if selected_lab == lab %}selected{% endif %}>Lab {{ lab }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+
+
+        <div class="rv-field">
+          <label class="rv-label">Date</label>
+          <input type="date" name="date" id="rv-date" class="rv-input" required>
+        </div>
+
+        <div class="rv-field rv-field-full">
+          <label class="rv-label">Time In</label>
+          <input type="time" name="time_in" id="rv-time" class="rv-input" required>
+        </div>
+
+      </div>
+
+      <!-- PC Grid -->
+      <div class="rv-pc-panel">
+        <div class="rv-pc-panel-head">
+          <div>
+            <h3>Select a PC</h3>
+            <p id="rv-pc-hint">Choose a lab to see available PCs.</p>
+          </div>
+          <div class="rv-pc-selected-label" id="rv-selected-label">No PC selected</div>
+        </div>
+        <div class="rv-pc-legend">
+          <span><i class="rv-legend available"></i> Available</span>
+          <span><i class="rv-legend reserved"></i> Reserved</span>
+          <span><i class="rv-legend in-use"></i> In Use</span>
+          <span><i class="rv-legend maintenance"></i> Maintenance</span>
+        </div>
+        <input type="hidden" name="pc_number" id="rv-pc-input" value="{{ selected_pc }}" data-lab="{{ selected_lab or (labs[0] if labs else '') }}">
+        <div class="rv-pc-grid" id="rv-pc-grid"></div>
+      </div>
+
+      <div class="rv-modal-footer">
+        <button type="button" class="rv-btn-cancel" onclick="closeReservationModal()">Cancel</button>
+        <button type="submit" class="rv-btn-submit" {% if not reservation_open %}disabled{% endif %}>Submit Reservation</button>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+<!-- ── SCRIPTS ────────────────────────────────────────────── -->
+<script>
+  const bookingMap    = {{ booking_map | tojson }};
+  const labCapacities = {{ lab_capacities | tojson }};
+  const currentActiveLab = {{ current_active_lab | tojson }};
+  const currentActivePc  = {{ current_active_pc | tojson }};
+
+
+  function openReservationModal(presetLab) {
+    const modal = document.getElementById('rv-modal');
+    modal.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    if (presetLab) {
+      document.getElementById('rv-lab-select').value = presetLab;
+    }
+    refreshDateMin();
+    renderPcGrid();
+
+  }
+
+  function closeReservationModal() {
+    document.getElementById('rv-modal').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  function pad2(v) { return String(v).padStart(2, '0'); }
+
+  function refreshDateMin() {
+    const dateEl = document.getElementById('rv-date');
+    if (!dateEl) return;
+    const now = new Date();
+    const today = `${now.getFullYear()}-${pad2(now.getMonth()+1)}-${pad2(now.getDate())}`;
+    dateEl.min = today;
+    if (!dateEl.value) dateEl.value = today;
+  }
+
+  document.getElementById('rv-date') && document.getElementById('rv-date').addEventListener('change', refreshDateMin);
+
+  function pcsForLab(lab) {
+    const total = Math.max(1, Number(labCapacities[lab] || 40));
+    return Array.from({ length: total }, (_, i) => String(i + 1));
+  }
+
+  function renderPcGrid() {
+    const lab     = document.getElementById('rv-lab-select').value;
+    const pcInput = document.getElementById('rv-pc-input');
+
+    const grid    = document.getElementById('rv-pc-grid');
+    const hint    = document.getElementById('rv-pc-hint');
+    const label   = document.getElementById('rv-selected-label');
+
+    if (pcInput.dataset.lab !== lab) pcInput.value = '';
+    pcInput.dataset.lab = lab;
+
+    const bookings = bookingMap[lab] || {};
+    hint.textContent = `Open PCs in Lab ${lab}.`;
+    label.textContent = pcInput.value ? `Lab ${lab} – PC ${pcInput.value}` : 'No PC selected';
+
+    grid.innerHTML = pcsForLab(lab).map(pc => {
+      const info = bookings[pc] || { state: 'available', label: 'Available' };
+      const cls  = info.state === 'in_use' ? 'in-use' : info.state;
+      const sel  = pcInput.value === pc ? 'selected' : '';
+      const dis  = info.state !== 'available' ? 'disabled' : '';
+      const isOwn = info.state === 'in_use' && String(currentActiveLab) === String(lab) && String(currentActivePc) === String(pc);
+      return `<button type="button" class="rv-pc-seat ${cls} ${sel}" data-pc="${pc}" ${dis} onclick="choosePc('${pc}')">
+        <strong>PC ${pc}</strong>
+        <span>${isOwn ? 'Your session' : info.label}</span>
+      </button>`;
+    }).join('');
+    
+  }
+
+
+  function choosePc(pc) {
+    const lab = document.getElementById('rv-lab-select').value;
+    const bookings = bookingMap[lab] || {};
+    const info = bookings[pc] || { state: 'available' };
+    if (info.state !== 'available') return;
+    document.getElementById('rv-pc-input').value = pc;
+    document.getElementById('rv-pc-input').dataset.lab = lab;
+    document.getElementById('rv-selected-label').textContent = `Lab ${lab} – PC ${pc}`;
+    renderPcGrid();
+  }
+
+  function validatePcSelection() {
+    const lab = document.getElementById('rv-lab-select').value;
+    const pc  = document.getElementById('rv-pc-input').value;
+    const dateEl = document.getElementById('rv-date');
+    const timeEl = document.getElementById('rv-time');
+    if (!lab)  { alert('Please choose a laboratory.'); return false; }
+    if (!pc)   { alert('Please choose an available PC.'); return false; }
+    if (!dateEl.value) { alert('Please choose a reservation date.'); return false; }
+    if (!timeEl.value) { alert('Please choose a reservation time.'); return false; }
+    const selected = new Date(`${dateEl.value}T${timeEl.value}:00`);
+    const now = new Date(); now.setSeconds(0,0);
+    if (selected < now) { alert('Please select a present or future date/time.'); return false; }
+    return true;
+  }
+
+  // Keyboard close
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeReservationModal(); });
+
+
+</script>
+
+<!-- ── STYLES ─────────────────────────────────────────────── -->
+<style>
+  /* Page */
+  .rv-page { max-width: 1100px; margin: 0 auto; padding: 2rem 1.2rem 3rem; }
+  .rv-hero { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .rv-hero-title { font-size: 1.9rem; font-weight: 800; color: #19335c; margin: 0 0 .3rem; }
+  .rv-hero-sub { margin: 0; color: #6a7890; font-size: .92rem; }
+  .rv-open-btn {
+    display: inline-flex; align-items: center; gap: .55rem;
+    padding: .75rem 1.4rem; border: none; border-radius: 12px;
+    background: linear-gradient(135deg, #19335c 0%, #365f9a 100%);
+    color: #fff; font-size: .95rem; font-weight: 700; cursor: pointer;
+    box-shadow: 0 8px 22px rgba(25,51,92,.22); transition: transform .15s, box-shadow .15s;
+  }
+  .rv-open-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(25,51,92,.3); }
+  .rv-open-btn svg { width: 18px; height: 18px; }
+  .rv-closed-badge { padding: .6rem 1.2rem; border-radius: 999px; background: #fff3cd; border: 1px solid #f0d36b; color: #8a6510; font-size: .88rem; font-weight: 600; }
+  .rv-alert-bar { padding: 1rem 1.2rem; border-radius: 12px; background: #fff6db; border: 1px solid #f0d36b; color: #8a6510; font-size: .9rem; margin-bottom: 1.5rem; }
+
+  /* Stats */
+  .rv-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: .8rem; margin-bottom: 2rem; }
+  .rv-stat { background: #fff; border: 1px solid #dce6f5; border-radius: 16px; padding: 1rem 1.1rem; }
+  .rv-stat span { display: block; font-size: .73rem; text-transform: uppercase; letter-spacing: .07em; color: #8190a7; margin-bottom: .4rem; }
+  .rv-stat strong { font-size: 1.8rem; font-weight: 800; color: #19335c; }
+
+  /* Section title */
+  .rv-section-title { font-size: 1rem; font-weight: 700; color: #19335c; margin-bottom: .9rem; text-transform: uppercase; letter-spacing: .06em; }
+
+  /* Labs overview */
+  .rv-labs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .9rem; margin-bottom: 2rem; }
+  .rv-lab-card { background: #fff; border: 1.5px solid #d8e1ec; border-radius: 18px; padding: 1.2rem; cursor: pointer; transition: box-shadow .18s, border-color .18s, transform .18s; }
+  .rv-lab-card:hover { border-color: #365f9a; box-shadow: 0 8px 24px rgba(25,51,92,.12); transform: translateY(-3px); }
+  .rv-lab-num { font-size: 1.05rem; font-weight: 800; color: #19335c; margin-bottom: .7rem; }
+  .rv-bar-wrap { height: 6px; background: #eaf0f9; border-radius: 999px; overflow: hidden; margin-bottom: .55rem; }
+  .rv-bar-fill { height: 100%; background: linear-gradient(90deg, #49a36e, #365f9a); border-radius: 999px; transition: width .4s ease; }
+  .rv-lab-meta { display: flex; gap: .4rem; font-size: .82rem; }
+  .rv-lab-free { color: #0f7a3a; font-weight: 700; }
+  .rv-lab-total { color: #8190a7; }
+  .rv-lab-cta { font-size: .75rem; color: #365f9a; font-weight: 600; margin-top: .6rem; }
+
+  /* Software chips */
+  .rv-sw-wrap { display: flex; flex-direction: column; gap: .8rem; }
+  .rv-sw-group { background: #fff; border: 1px solid #d8e1ec; border-radius: 14px; padding: .9rem 1rem; }
+  .rv-sw-group-label { font-size: .75rem; font-weight: 700; color: #4b6080; text-transform: uppercase; letter-spacing: .07em; margin-bottom: .55rem; }
+  .rv-sw-chips { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .rv-sw-chip { padding: .3rem .7rem; border-radius: 999px; background: #edf4ff; color: #2d5a9e; font-size: .78rem; font-weight: 600; }
+
+  /* Modal overlay */
+  .rv-modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(15, 25, 50, .55); backdrop-filter: blur(5px);
+    z-index: 9500; align-items: center; justify-content: center; padding: 1rem;
+  }
+  .rv-modal-overlay.open { display: flex; }
+
+  /* Modal box */
+  .rv-modal-box {
+    background: #fff; border-radius: 20px;
+    box-shadow: 0 24px 60px rgba(0,0,0,.22);
+    width: 100%; max-width: 640px; max-height: 92vh;
+    overflow-y: auto; animation: rvSlideIn .25s cubic-bezier(.22,.68,0,1.2);
+  }
+  @keyframes rvSlideIn { from { opacity:0; transform: scale(.93) translateY(18px); } to { opacity:1; transform: none; } }
+
+  .rv-modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1.6rem 1.6rem 1rem; }
+  .rv-modal-title { font-size: 1.25rem; font-weight: 800; color: #19335c; margin: 0 0 .25rem; }
+  .rv-modal-sub { margin: 0; color: #6a7890; font-size: .85rem; }
+  .rv-modal-close { background: #f0f4fb; border: none; border-radius: 50%; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: background .15s; }
+  .rv-modal-close:hover { background: #e0e8f4; }
+  .rv-modal-close svg { width: 16px; height: 16px; color: #4b6080; }
+
+  /* Form */
+  .rv-form { padding: 0 1.6rem 1.6rem; }
+  .rv-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .85rem; margin-bottom: 1rem; }
+  .rv-field { display: flex; flex-direction: column; gap: .3rem; }
+  .rv-field-full { grid-column: span 2; }
+  .rv-label { font-size: .74rem; font-weight: 700; color: #667085; text-transform: uppercase; letter-spacing: .05em; }
+  .rv-input { padding: .65rem .9rem; border: 1.5px solid #dbe4ef; border-radius: 10px; font-size: .9rem; font-family: inherit; outline: none; transition: border .18s, box-shadow .18s; background: #fff; color: #1f2937; width: 100%; box-sizing: border-box; }
+  .rv-input:focus { border-color: #365f9a; box-shadow: 0 0 0 3px rgba(54,95,154,.12); }
+  .rv-readonly { background: #f8fbff; color: #344054; }
+
+  /* PC panel inside modal */
+  .rv-pc-panel { border: 1px solid #d8e1ec; border-radius: 14px; background: #f8fbff; padding: 1rem; margin-bottom: 1.1rem; }
+  .rv-pc-panel-head { display: flex; justify-content: space-between; align-items: flex-start; gap: .75rem; margin-bottom: .65rem; }
+  .rv-pc-panel-head h3 { margin: 0; color: #19335c; font-size: .95rem; }
+  .rv-pc-panel-head p { margin: .15rem 0 0; color: #6a7890; font-size: .8rem; }
+  .rv-pc-selected-label { padding: .35rem .75rem; border-radius: 999px; background: #edf3fb; color: #365f9a; font-size: .75rem; font-weight: 700; white-space: nowrap; }
+  .rv-pc-legend { display: flex; gap: .75rem; margin-bottom: .75rem; font-size: .74rem; color: #556070; flex-wrap: wrap; }
+  .rv-pc-legend span { display: inline-flex; align-items: center; gap: .35rem; }
+  .rv-legend { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .rv-legend.available { background: #c8f1c8; }
+  .rv-legend.reserved  { background: #f9d8d8; }
+  .rv-legend.in-use    { background: #c7d8ff; }
+  .rv-legend.maintenance { background: #fdf0fb; }
+  .rv-pc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px,1fr)); gap: .45rem; max-height: 240px; overflow-y: auto; }
+  .rv-pc-seat { border: 1px solid #d8e1ec; border-radius: 10px; padding: .6rem .45rem; background: #fff; cursor: pointer; text-align: left; display: flex; flex-direction: column; gap: .15rem; min-height: 60px; transition: transform .12s, box-shadow .12s; }
+  .rv-pc-seat:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 5px 14px rgba(16,30,54,.1); }
+  .rv-pc-seat strong { font-size: .78rem; color: #19335c; }
+  .rv-pc-seat span { font-size: .67rem; color: #6a7890; }
+  .rv-pc-seat.available { background: #f6fff4; border-color: #bfe7bf; }
+  .rv-pc-seat.reserved  { background: #fff4f4; border-color: #efc1c1; cursor: not-allowed; opacity: .8; }
+  .rv-pc-seat.in-use    { background: #f0f5ff; border-color: #bfd0ff; cursor: not-allowed; opacity: .8; }
+  .rv-pc-seat.maintenance { background: #fdf0fb; border-color: #e6bfdf; cursor: not-allowed; opacity: .8; }
+  .rv-pc-seat.selected  { outline: 2px solid #365f9a; outline-offset: 1px; }
+
+  /* Footer */
+  .rv-modal-footer { display: flex; justify-content: flex-end; gap: .7rem; padding-top: .5rem; border-top: 1px solid #eef2f7; }
+  .rv-btn-cancel { padding: .65rem 1.3rem; border: 1.5px solid #d8e1ec; border-radius: 10px; background: #fff; color: #6a7890; font-weight: 600; cursor: pointer; transition: background .15s; }
+  .rv-btn-cancel:hover { background: #f5f8fc; }
+  .rv-btn-submit { padding: .65rem 1.6rem; border: none; border-radius: 10px; background: linear-gradient(135deg,#19335c,#365f9a); color: #fff; font-weight: 700; cursor: pointer; box-shadow: 0 6px 18px rgba(25,51,92,.2); transition: transform .15s, box-shadow .15s; }
+  .rv-btn-submit:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(25,51,92,.28); }
+  .rv-btn-submit:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; transform: none; }
+
+  @media (max-width: 700px) {
+    .rv-stats { grid-template-columns: repeat(2,1fr); }
+    .rv-form-grid { grid-template-columns: 1fr; }
+    .rv-field-full { grid-column: span 1; }
+    .rv-modal-header { flex-direction: column; }
+  }
+
+  /* DARK MODE */
+  :root[data-theme="dark"] .rv-hero-title { color: #f8fafc; }
+  :root[data-theme="dark"] .rv-hero-sub { color: #9aa5b8; }
+  :root[data-theme="dark"] .rv-stat { background: #1a2436; border-color: #2b394f; }
+  :root[data-theme="dark"] .rv-stat span { color: #8a9ab0; }
+  :root[data-theme="dark"] .rv-stat strong { color: #f8fafc; }
+  :root[data-theme="dark"] .rv-section-title { color: #f8fafc; }
+  :root[data-theme="dark"] .rv-lab-card { background: #1a2436; border-color: #2b394f; }
+  :root[data-theme="dark"] .rv-lab-card:hover { border-color: #4f74ab; background: #1e2a40; }
+  :root[data-theme="dark"] .rv-lab-num { color: #f8fafc; }
+  :root[data-theme="dark"] .rv-bar-wrap { background: #233147; }
+  :root[data-theme="dark"] .rv-lab-free { color: #61c78b; }
+  :root[data-theme="dark"] .rv-lab-total { color: #8a9ab0; }
+  :root[data-theme="dark"] .rv-lab-cta { color: #7398d1; }
+  
+  :root[data-theme="dark"] .rv-sw-group { background: #1a2436; border-color: #2b394f; }
+  :root[data-theme="dark"] .rv-sw-group-label { color: #a1b0c9; }
+  :root[data-theme="dark"] .rv-sw-chip { background: #233147; color: #8eb3ed; }
+  
+  :root[data-theme="dark"] .rv-modal-box { background: #161e2c; box-shadow: 0 24px 60px rgba(0,0,0,.6); }
+  :root[data-theme="dark"] .rv-modal-title { color: #f8fafc; }
+  :root[data-theme="dark"] .rv-modal-sub { color: #9aa5b8; }
+  :root[data-theme="dark"] .rv-modal-close { background: #233147; }
+  :root[data-theme="dark"] .rv-modal-close svg { color: #b0c0d8; }
+  :root[data-theme="dark"] .rv-modal-close:hover { background: #2b3b55; }
+  
+  :root[data-theme="dark"] .rv-label { color: #9ca3af; }
+  :root[data-theme="dark"] .rv-input { background: #1a2436; border-color: #2b394f; color: #e5e7eb; }
+  :root[data-theme="dark"] .rv-input:focus { border-color: #5c85c4; box-shadow: 0 0 0 3px rgba(92, 133, 196, .15); }
+  :root[data-theme="dark"] .rv-readonly { background: #121924; color: #8894a8; }
+  
+  :root[data-theme="dark"] .rv-pc-panel { background: #131a26; border-color: #243248; }
+  :root[data-theme="dark"] .rv-pc-panel-head h3 { color: #e5e7eb; }
+  :root[data-theme="dark"] .rv-pc-panel-head p { color: #8a9ab0; }
+  :root[data-theme="dark"] .rv-pc-selected-label { background: #1d2a40; color: #8eb3ed; }
+  :root[data-theme="dark"] .rv-pc-legend { color: #9ca3af; }
+  :root[data-theme="dark"] .rv-legend.available { background: #3d7e48; }
+  :root[data-theme="dark"] .rv-legend.reserved  { background: #8a4141; }
+  :root[data-theme="dark"] .rv-legend.in-use    { background: #405c92; }
+  :root[data-theme="dark"] .rv-legend.maintenance { background: #4a2d48; }
+  
+  :root[data-theme="dark"] .rv-pc-seat { background: #1a2436; border-color: #2b394f; }
+  :root[data-theme="dark"] .rv-pc-seat strong { color: #e5e7eb; }
+  :root[data-theme="dark"] .rv-pc-seat span { color: #8a9ab0; }
+  :root[data-theme="dark"] .rv-pc-seat.available { background: #15271a; border-color: #2c4f34; }
+  :root[data-theme="dark"] .rv-pc-seat.reserved  { background: #2f1717; border-color: #5c2c2c; }
+  :root[data-theme="dark"] .rv-pc-seat.in-use    { background: #1a2538; border-color: #2d4166; }
+  :root[data-theme="dark"] .rv-pc-seat.maintenance { background: #2a1a2a; border-color: #4a2d48; }
+  :root[data-theme="dark"] .rv-pc-seat.selected  { outline: 2px solid #5c85c4; }
+  
+  :root[data-theme="dark"] .rv-modal-footer { border-color: #2b394f; }
+  :root[data-theme="dark"] .rv-btn-cancel { background: #1a2436; border-color: #2b394f; color: #b0b8c6; }
+  :root[data-theme="dark"] .rv-btn-cancel:hover { background: #233147; }
+</style>
+{% endblock %}

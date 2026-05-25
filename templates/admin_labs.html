@@ -1,0 +1,463 @@
+{% extends "admin_base.html" %}
+{% block title %}PC Control - CCS Admin{% endblock %}
+{% block content %}
+<!-- Edit Lab Modal -->
+<div class="ep-overlay" id="lab-modal" onclick="if(event.target.id=='lab-modal')closeLabModal()">
+  <div class="ep-box">
+    <div class="ep-header">
+      <h3>Edit Laboratory</h3>
+      <button class="ep-close" onclick="closeLabModal()">×</button>
+    </div>
+    <form method="post" id="lab-form">
+      <div class="ep-fields">
+        <div class="ep-field">
+          <label>Lab Room</label>
+          <input type="text" id="lab-room" readonly style="background: #f0f0f0; cursor: not-allowed;"/>
+        </div>
+        <div class="ep-field">
+          <label>
+            <input type="checkbox" id="lab-enabled" name="is_enabled" value="1"/>
+            Enabled for Reservations
+          </label>
+        </div>
+        <div class="ep-field">
+          <label>Capacity (PCs)</label>
+          <input type="number" name="capacity" id="lab-cap" min="1" max="100"/>
+        </div>
+      </div>
+      <div class="ep-footer">
+        <button type="button" class="ep-btn-cancel" onclick="closeLabModal()">Cancel</button>
+        <button type="submit" class="ep-btn-save">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+  .page-card { background: var(--surface); border: 1px solid var(--border-soft); border-radius: 18px; padding: 1.5rem; box-shadow: var(--shadow-md); }
+  .page-title { margin: 0 0 1.5rem 0; font-size: 1.8rem; color: #19335c; }
+  .status-badge { display: inline-block; padding: .35rem .7rem; border-radius: 20px; font-size: .75rem; font-weight: 600; text-transform: uppercase; }
+  .status-badge.active { background: #d4edda; color: #155724; }
+  .status-badge.inactive { background: #f8d7da; color: #721c24; }
+  .action-btn { padding: .4rem .8rem; border: none; border-radius: 8px; font-size: .75rem; cursor: pointer; transition: all .18s ease; }
+  .action-btn.edit { background: #d7e3f2; color: #365f9a; }
+  .action-btn.edit:hover { background: #c0d4e8; }
+  .ep-overlay { position: fixed; inset: 0; background: rgba(24, 20, 46, 0.55); backdrop-filter: blur(4px); z-index: 9999; display: none; align-items: center; justify-content: center; }
+  .ep-overlay.open { display: flex; }
+  .ep-box { background: var(--surface); border-radius: 18px; box-shadow: 0 20px 60px rgba(25, 51, 92, 0.2); max-width: 450px; width: 90%; max-height: 80vh; overflow-y: auto; }
+  .ep-header { padding: 1.2rem 1.5rem; border-bottom: 1px solid var(--border-soft); display: flex; align-items: center; justify-content: space-between; }
+  .ep-header h3 { margin: 0; font-size: 1.1rem; color: var(--text); }
+  .ep-close { width: 32px; height: 32px; border: none; background: transparent; font-size: 1.5rem; color: #7b88a0; cursor: pointer; }
+  .ep-fields { padding: 1.5rem; }
+  .ep-field { margin-bottom: 1rem; }
+  .ep-field label { display: block; font-weight: 600; font-size: .85rem; color: #465d79; margin-bottom: .35rem; }
+  .ep-field label input[type="checkbox"] { margin-right: .5rem; width: 18px; height: 18px; cursor: pointer; }
+  .ep-field input { width: 100%; padding: .6rem; border: 1px solid #d8e1ec; border-radius: 10px; font-size: .9rem; font-family: inherit; box-sizing: border-box; }
+  .ep-field input:focus { outline: none; border-color: #365f9a; box-shadow: 0 0 0 3px rgba(54, 95, 154, 0.1); }
+  .ep-footer { padding: 1rem 1.5rem; border-top: 1px solid #d8e1ec; display: flex; gap: .8rem; justify-content: flex-end; }
+  .ep-btn-cancel, .ep-btn-save { padding: .6rem 1.2rem; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all .18s ease; }
+  .ep-btn-cancel { background: #e8eef7; color: #374151; }
+  .ep-btn-cancel:hover { background: #dce5f0; }
+  .ep-btn-save { background: #19335c; color: #fff; }
+  .ep-btn-save:hover { background: #1a3a6f; }
+</style>
+
+<script>
+  function editLab(room, enabled, capacity) {
+    const form = document.getElementById('lab-form');
+    form.action = "{{ url_for('admin_edit_lab', lab_room='PLACEHOLDER') }}".replace('PLACEHOLDER', room);
+    document.getElementById('lab-room').value = room;
+    document.getElementById('lab-enabled').checked = !!enabled;
+    document.getElementById('lab-cap').value = capacity;
+    document.getElementById('lab-modal').classList.add('open');
+  }
+  function closeLabModal() {
+    document.getElementById('lab-modal').classList.remove('open');
+  }
+</script>
+
+<!-- ─── PC CONTROL SECTION ─── -->
+<div class="page-card">
+  <div class="pc-page-header">
+    <h2 class="page-title" style="margin: 0;">PC Control</h2>
+    <div class="pc-range-label" id="pc-range-label"></div>
+  </div>
+
+  <!-- Legend -->
+  <div class="pc-legend-bar">
+    <span class="pc-legend-item"><i class="pc-dot dot-available"></i> Available</span>
+    <span class="pc-legend-item"><i class="pc-dot dot-in-use"></i> In use</span>
+    <span class="pc-legend-item"><i class="pc-dot dot-maintenance"></i> Maintenance</span>
+  </div>
+
+  <!-- Lab Panels -->
+  <div class="pc-labs-grid">
+    {% for lab in lab_rooms %}
+    {% set cap = capacities.get(lab, 40) %}
+    {% set lab_meta = labs_by_room.get(lab, {}) %}
+    {% set lab_enabled = lab_meta.get('is_enabled', 1) %}
+    <div class="pc-lab-panel" id="lab-panel-{{ lab }}">
+
+      <div class="pc-lab-header">
+        <div>
+          <div class="pc-lab-title">Lab {{ lab }}</div>
+          <div class="pc-lab-meta">
+            <span class="status-badge {% if lab_enabled %}active{% else %}inactive{% endif %}">
+              {% if lab_enabled %}Enabled{% else %}Disabled{% endif %}
+            </span>
+          </div>
+        </div>
+        <div class="pc-lab-tools">
+          <div class="pc-lab-count"><span class="pc-lab-count-num">{{ cap }}</span> PCS</div>
+          <button type="button" class="action-btn edit" onclick='editLab({{ lab|tojson }}, {{ lab_enabled|int }}, {{ cap|int }})'>Edit</button>
+        </div>
+      </div>
+
+      <!-- Bulk Actions -->
+      <div class="pc-bulk-actions">
+        <button type="button" class="pc-bulk-btn" onclick="selectAllPCs('{{ lab }}')">Select All</button>
+        <button type="button" class="pc-bulk-btn" onclick="clearSelection('{{ lab }}')">Clear</button>
+        <button type="button" class="pc-bulk-btn pc-bulk-maint" onclick="bulkSetStatus('{{ lab }}', 'maintenance')">Set Maintenance</button>
+        <button type="button" class="pc-bulk-btn pc-bulk-avail" onclick="bulkSetStatus('{{ lab }}', 'available')">Set Available</button>
+      </div>
+
+      <!-- PC Grid -->
+      <div class="pc-tile-grid" id="pc-grid-{{ lab }}">
+        {% for pc_num in range(1, cap + 1) %}
+        {% set pc = pc_num|string %}
+        {% set pc_info = booking_map.get(lab, {}).get(pc, {}) %}
+        {% set maint = maintenance_map.get(lab, {}).get(pc, false) %}
+        {% if maint %}
+          {% set state = 'maintenance' %}
+        {% elif pc_info.get('state', 'available') == 'in_use' %}
+          {% set state = 'in_use' %}
+        {% elif pc_info.get('state', 'available') == 'reserved' %}
+          {% set state = 'in_use' %}
+        {% else %}
+          {% set state = 'available' %}
+        {% endif %}
+        <button type="button"
+                class="pc-tile pc-{{ state }} {% if state == 'in_use' %}pc-tile-locked{% endif %}"
+                data-lab="{{ lab }}"
+                data-pc="{{ pc }}"
+                data-state="{{ state }}"
+                onclick="togglePcSelect(this)"
+                {% if state == 'in_use' %}title="{{ pc_info.get('student_name','') }} — {{ pc_info.get('status','') }}"{% endif %}>
+          <span class="pc-tile-label">PC</span>
+          <span class="pc-tile-num">{{ pc }}</span>
+        </button>
+        {% endfor %}
+      </div>
+
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<style>
+  /* ── Page ── */
+  .pc-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: .6rem;
+    margin-bottom: 1.2rem;
+  }
+  .pc-range-label {
+    font-size: .85rem;
+    font-weight: 700;
+    color: #9b59b6;
+  }
+
+  /* ── Legend ── */
+  .pc-legend-bar {
+    display: flex;
+    gap: 1.4rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .pc-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    font-size: .82rem;
+    font-weight: 600;
+    color: #555;
+  }
+  .pc-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .dot-available   { background: #27ae60; }
+  .dot-in-use      { background: #e74c3c; }
+  .dot-maintenance { background: #e08cd6; }
+
+  /* ── Labs Grid ── */
+  .pc-labs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+    gap: 1.5rem;
+  }
+
+  /* ── Lab Panel ── */
+  .pc-lab-panel {
+    background: var(--surface, #fff);
+    border: 1.5px solid var(--border-soft, #e6e0f3);
+    border-radius: 18px;
+    padding: 1.4rem;
+    box-shadow: 0 2px 12px rgba(108,63,197,.05);
+  }
+  .pc-lab-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: .8rem;
+  }
+  .pc-lab-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--text, #1e2535);
+  }
+  .pc-lab-meta {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    flex-wrap: wrap;
+    margin-top: .35rem;
+    color: #6b7280;
+    font-size: .78rem;
+    font-weight: 600;
+  }
+  .pc-lab-tools {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    flex-shrink: 0;
+  }
+  .pc-lab-count {
+    font-size: .78rem;
+    font-weight: 700;
+    color: #fff;
+    background: #e08cd6;
+    padding: .3rem .7rem;
+    border-radius: 999px;
+    letter-spacing: .03em;
+  }
+  .pc-lab-count-num { font-size: .85rem; }
+
+  /* ── Bulk Actions ── */
+  .pc-bulk-actions {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+  .pc-bulk-btn {
+    padding: .35rem .7rem;
+    border: none;
+    border-radius: 6px;
+    font-size: .76rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: transparent;
+    color: #555;
+    transition: background .15s, color .15s;
+    font-family: inherit;
+  }
+  .pc-bulk-btn:hover { background: #f0eefa; color: #333; }
+  .pc-bulk-maint { color: #c2539a; }
+  .pc-bulk-maint:hover { background: #fce4f3; color: #a33a7f; }
+  .pc-bulk-avail { color: #27ae60; }
+  .pc-bulk-avail:hover { background: #e4f9ef; color: #1a8a4a; }
+
+  /* ── PC Tiles ── */
+  .pc-tile-grid {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: .4rem;
+  }
+  .pc-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: .55rem .3rem;
+    border: 1.5px solid #ddd;
+    border-radius: 10px;
+    background: #f8f8f8;
+    cursor: pointer;
+    transition: transform .12s, box-shadow .12s, border-color .12s, background .15s;
+    min-height: 56px;
+    user-select: none;
+  }
+  .pc-tile:hover:not(.pc-tile-locked) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,.1);
+  }
+  .pc-tile-label {
+    font-size: .62rem;
+    font-weight: 600;
+    color: #999;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+  .pc-tile-num {
+    font-size: .95rem;
+    font-weight: 800;
+    color: #444;
+    line-height: 1.2;
+  }
+
+  /* States */
+  .pc-available {
+    background: #f0faf0;
+    border-color: #bfe7bf;
+  }
+  .pc-available .pc-tile-num { color: #2a7a3a; }
+
+  .pc-in_use {
+    background: #fff0f0;
+    border-color: #efc1c1;
+    cursor: not-allowed;
+    opacity: .7;
+  }
+  .pc-in_use .pc-tile-label { color: #c44; }
+  .pc-in_use .pc-tile-num   { color: #c44; }
+
+  .pc-maintenance {
+    background: #fdf0fb;
+    border-color: #e6bfdf;
+  }
+  .pc-maintenance .pc-tile-label { color: #c2539a; }
+  .pc-maintenance .pc-tile-num   { color: #a33a7f; }
+
+  /* Selected (checkbox-like ring) */
+  .pc-tile.pc-selected {
+    outline: 2.5px solid #7c3aed;
+    outline-offset: 1px;
+    box-shadow: 0 0 0 4px rgba(124,58,237,.15);
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    .pc-labs-grid { grid-template-columns: 1fr; }
+    .pc-tile-grid { grid-template-columns: repeat(5, 1fr); }
+    .pc-lab-header { align-items: flex-start; flex-direction: column; }
+    .pc-lab-tools { width: 100%; justify-content: space-between; }
+  }
+
+  /* ── Dark Mode ── */
+  :root[data-theme="dark"] .pc-lab-panel { background: #1a2235; border-color: #2d3a52; }
+  :root[data-theme="dark"] .pc-lab-title { color: #f0f2f5; }
+  :root[data-theme="dark"] .pc-lab-meta { color: #9aa5b8; }
+  :root[data-theme="dark"] .pc-bulk-btn { color: #9aa5b8; }
+  :root[data-theme="dark"] .pc-bulk-btn:hover { background: #232e42; color: #d0d8e6; }
+  :root[data-theme="dark"] .pc-tile { background: #1e2a3e; border-color: #2d3d55; }
+  :root[data-theme="dark"] .pc-tile-label { color: #6c7a92; }
+  :root[data-theme="dark"] .pc-tile-num { color: #bcc6d4; }
+  :root[data-theme="dark"] .pc-available { background: #162a1d; border-color: #2c5535; }
+  :root[data-theme="dark"] .pc-available .pc-tile-num { color: #5ec97a; }
+  :root[data-theme="dark"] .pc-in_use { background: #2f1a1a; border-color: #5a2e2e; }
+  :root[data-theme="dark"] .pc-in_use .pc-tile-label, :root[data-theme="dark"] .pc-in_use .pc-tile-num { color: #e07070; }
+  :root[data-theme="dark"] .pc-maintenance { background: #2a1a2a; border-color: #4a2d48; }
+  :root[data-theme="dark"] .pc-maintenance .pc-tile-label, :root[data-theme="dark"] .pc-maintenance .pc-tile-num { color: #d88ec8; }
+  :root[data-theme="dark"] .pc-legend-item { color: #9aa5b8; }
+  :root[data-theme="dark"] .pc-range-label { color: #d88ec8; }
+</style>
+
+{% block extra_script %}
+<script>
+  const selectedPCs = {};  // { lab: Set([pc, ...]) }
+
+  function getGrid(lab) {
+    return document.getElementById('pc-grid-' + lab);
+  }
+
+  function togglePcSelect(btn) {
+    if (btn.classList.contains('pc-tile-locked')) return;
+    const lab = btn.dataset.lab;
+    const pc  = btn.dataset.pc;
+    if (!selectedPCs[lab]) selectedPCs[lab] = new Set();
+    if (selectedPCs[lab].has(pc)) {
+      selectedPCs[lab].delete(pc);
+      btn.classList.remove('pc-selected');
+    } else {
+      selectedPCs[lab].add(pc);
+      btn.classList.add('pc-selected');
+    }
+    updateRangeLabel();
+  }
+
+  function selectAllPCs(lab) {
+    const grid = getGrid(lab);
+    if (!grid) return;
+    if (!selectedPCs[lab]) selectedPCs[lab] = new Set();
+    grid.querySelectorAll('.pc-tile:not(.pc-tile-locked)').forEach(btn => {
+      selectedPCs[lab].add(btn.dataset.pc);
+      btn.classList.add('pc-selected');
+    });
+    updateRangeLabel();
+  }
+
+  function clearSelection(lab) {
+    const grid = getGrid(lab);
+    if (!grid) return;
+    if (selectedPCs[lab]) selectedPCs[lab].clear();
+    grid.querySelectorAll('.pc-tile').forEach(btn => btn.classList.remove('pc-selected'));
+    updateRangeLabel();
+  }
+
+  function updateRangeLabel() {
+    let total = 0;
+    for (const lab in selectedPCs) total += selectedPCs[lab].size;
+    const el = document.getElementById('pc-range-label');
+    el.textContent = total > 0 ? `${total} PC(s) selected` : '';
+  }
+
+  async function bulkSetStatus(lab, status) {
+    const pcs = selectedPCs[lab];
+    if (!pcs || pcs.size === 0) {
+      alert('Please select at least one PC first.');
+      return;
+    }
+    const action = status === 'maintenance' ? 'set to maintenance' : 'set to available';
+    if (!confirm(`Are you sure you want to ${action} ${pcs.size} PC(s) in Lab ${lab}?`)) return;
+
+    try {
+      const resp = await fetch('{{ url_for("admin_pc_control_update") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lab: lab, pcs: Array.from(pcs), status: status })
+      });
+      const data = await resp.json();
+      if (data.ok) {
+        // Update tiles in-place
+        const grid = getGrid(lab);
+        pcs.forEach(pc => {
+          const btn = grid.querySelector(`.pc-tile[data-pc="${pc}"]`);
+          if (!btn) return;
+          btn.classList.remove('pc-available', 'pc-maintenance', 'pc-selected');
+          btn.dataset.state = status;
+          if (status === 'maintenance') {
+            btn.classList.add('pc-maintenance');
+          } else {
+            btn.classList.add('pc-available');
+          }
+        });
+        pcs.clear();
+        updateRangeLabel();
+      } else {
+        alert(data.error || 'Something went wrong.');
+      }
+    } catch (err) {
+      alert('Network error: ' + err.message);
+    }
+  }
+</script>
+{% endblock %}
+{% endblock %}

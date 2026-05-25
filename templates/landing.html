@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}CCS Monitoring - Landing{% endblock %}
+{% block content %}
+<div class="landing-page">
+  <section class="landing-hero">
+    <div>
+      <h1>Student Leaderboard</h1>
+
+      <div class="landing-actions">
+        {% if not session.get('user_id') %}
+        <a href="{{ url_for('login') }}" class="btn btn-primary">Login</a>
+        <a href="{{ url_for('register') }}" class="btn btn-secondary">Register</a>
+        {% else %}
+        <a href="{{ url_for('dashboard') }}" class="btn btn-primary">Go to Dashboard</a>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <section class="leader-card landing-leaderboard">
+    <table class="leader-table">
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Student</th>
+          <th>Points</th>
+          <th>Hours</th>
+          <th>Score</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rankings %}
+        <tr {% if user and row.id == user.id %}class="leader-highlight"{% endif %}>
+          <td>#{{ row.rank }}</td>
+          <td>{{ row.first_name }} {{ row.last_name }}</td>
+          <td>{{ row.reward_points }}</td>
+          <td>{{ row.total_hours }}</td>
+          <td>{{ row.leaderboard_score }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">No leaderboard data yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+
+<style>
+  body {
+    background-image: url('/static/images/login-bg.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+  }
+  :root[data-theme="dark"] body {
+    background-image: url('/static/images/login-bg.jpg') !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    background-attachment: fixed !important;
+  }
+  .landing-page { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
+  .landing-hero { display: grid; grid-template-columns: 1fr; gap: 1.5rem; padding: 2rem; background: linear-gradient(135deg,#19335c,#365f9a); color: #fff; border-radius: 24px; }
+  .landing-hero h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); }
+  .landing-hero p { max-width: 720px; margin: 1rem 0 0; color: rgba(255,255,255,.86); line-height: 1.7; }
+  .landing-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.4rem; }
+  .landing-actions .btn { padding: 0.9rem 1.4rem; border-radius: 999px; text-decoration: none; font-weight: 600; }
+  .btn-primary { background: linear-gradient(135deg, #1b3d7b 0%, #254c8c 100%); color: #fff; border: 1px solid #fff; }
+  .btn-primary:hover { background: linear-gradient(135deg, #254c8c 0%, #1b3d7b 100%); }
+  .btn-secondary { background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.4); color: #fff; }
+  .btn-tertiary { background: transparent; border: 1px solid rgba(255,255,255,.6); color: #fff; }
+  .landing-leaderboard { margin-top: 1.6rem; background: var(--surface); border: 1px solid var(--border-soft); border-radius: 20px; padding: 1rem; overflow-x:auto; }
+  .leader-table { width: 100%; border-collapse: collapse; }
+  .leader-table th, .leader-table td { padding: 0.85rem 1rem; border-bottom: 1px solid var(--border-soft); text-align: left; }
+  .leader-table th { font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-2); }
+  .leader-highlight { background: var(--yellow-soft); }
+  @media (max-width: 860px) {
+    .landing-actions { flex-direction: column; align-items: stretch; }
+  }
+</style>
+{% if session.get('user_id') and not session.get('is_admin') %}
+{% include "student_floating_controls.html" %}
+{% endif %}
+{% endblock %}

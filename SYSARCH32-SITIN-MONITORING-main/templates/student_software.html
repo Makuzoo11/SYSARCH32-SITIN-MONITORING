@@ -1,0 +1,512 @@
+{% extends "base.html" %}
+{% block title %}Software - CCS Monitoring{% endblock %}
+{% block content %}
+<div class="sw-wrap">
+
+  <!-- Page Header -->
+  <div class="sw-page-header">
+    <div>
+      <h1 class="sw-page-title">Lab Software</h1>
+      <p class="sw-page-sub">Browse available software installed across CCS laboratories.</p>
+    </div>
+    <div class="sw-lab-tabs" id="lab-tabs">
+      {% for lab in labs %}
+      <button
+        class="sw-lab-tab {% if loop.first %}active{% endif %}"
+        data-lab="{{ lab }}"
+        onclick="switchLab('{{ lab }}')"
+        id="tab-{{ lab }}"
+      >Lab {{ lab }}</button>
+      {% endfor %}
+      <button class="sw-lab-tab {% if not labs %}active{% endif %}" data-lab="all" onclick="switchLab('all')" id="tab-all">All Labs</button>
+    </div>
+  </div>
+
+  <!-- Category Filter Bar -->
+  <div class="sw-filter-bar">
+    <div class="sw-filter-pills" id="category-pills">
+      <button class="sw-pill active" data-cat="all" onclick="filterCategory('all')">All Categories</button>
+      {% for cat in categories %}
+      <button class="sw-pill" data-cat="{{ cat }}" onclick="filterCategory('{{ cat }}')">{{ cat }}</button>
+      {% endfor %}
+    </div>
+    <div class="sw-search-wrap">
+      <svg class="sw-search-icon" viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.7"/><path d="M13 13l3.5 3.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      <input type="text" class="sw-search" id="sw-search" placeholder="Search software…" oninput="filterSoftware()">
+    </div>
+  </div>
+
+  <!-- Software Grid -->
+  <div class="sw-content">
+    {% if not software_by_lab %}
+    <div class="sw-empty">
+      <div class="sw-empty-icon">💿</div>
+      <p>No software has been added yet.</p>
+      <span>Check back later or contact the lab administrator.</span>
+    </div>
+    {% else %}
+
+    <!-- Consolidated (single) software list -->
+    <div class="sw-lab-section" data-lab="all" id="section-all">
+      <div class="sw-lab-header">
+        <div class="sw-lab-badge">All Labs</div>
+        <span class="sw-lab-count" id="sw-visible-count">{{ all_software|length }} software</span>
+      </div>
+      <div class="sw-cards" id="cards-all">
+        {% for sw in all_software %}
+        {% set show_labs = sw._show_labs %}
+        {% set extra_labs = sw._extra_labs %}
+        <div class="sw-card"
+             data-name="{{ sw.name|lower }}"
+             data-category="{{ sw.category }}"
+             data-desc="{{ (sw.description or '')|lower }}"
+             data-labs="{{ sw.available_labs }}">
+          <div class="sw-card-top" style="display:flex;align-items:center;gap:.9rem;">
+            <div class="sw-card-icon">
+              {% set lname = sw.name|lower %}
+              {% if 'visual studio code' in lname or 'vscode' in lname %}
+                <img src="{{ url_for('static', filename='images/software/vscode.svg') }}" alt="vscode" loading="lazy">
+              {% elif 'visual studio' in lname and 'code' not in lname %}
+                <img src="{{ url_for('static', filename='images/software/visualstudio.svg') }}" alt="visual studio" loading="lazy">
+              {% elif 'python' in lname %}
+                <img src="{{ url_for('static', filename='images/software/python.svg') }}" alt="python" loading="lazy">
+              {% elif 'java' in lname %}
+                <img src="{{ url_for('static', filename='images/software/java.svg') }}" alt="java" loading="lazy">
+              {% elif 'android' in lname %}
+                <img src="{{ url_for('static', filename='images/software/android.svg') }}" alt="android" loading="lazy">
+              {% elif 'arduino' in lname %}
+                <img src="{{ url_for('static', filename='images/software/arduino.svg') }}" alt="arduino" loading="lazy">
+              {% elif 'git' in lname and 'github' not in lname %}
+                <img src="{{ url_for('static', filename='images/software/git.svg') }}" alt="git" loading="lazy">
+              {% elif 'github' in lname %}
+                <img src="{{ url_for('static', filename='images/software/git.svg') }}" alt="github" loading="lazy">
+              {% elif 'eclipse' in lname %}
+                <img src="{{ url_for('static', filename='images/software/eclipse.svg') }}" alt="eclipse" loading="lazy">
+              {% elif 'netbeans' in lname %}
+                <img src="{{ url_for('static', filename='images/software/netbeans.svg') }}" alt="netbeans" loading="lazy">
+              {% elif 'postman' in lname %}
+                <img src="{{ url_for('static', filename='images/software/postman.svg') }}" alt="postman" loading="lazy">
+              {% elif 'sublime' in lname %}
+                <img src="{{ url_for('static', filename='images/software/sublime.svg') }}" alt="sublime" loading="lazy">
+              {% elif 'matlab' in lname %}
+                <img src="{{ url_for('static', filename='images/software/matlab.svg') }}" alt="matlab" loading="lazy">
+              {% elif 'wireshark' in lname or 'network' in lname %}
+                <img src="{{ url_for('static', filename='images/software/wireshark.svg') }}" alt="wireshark" loading="lazy">
+              {% elif 'cisco' in lname or 'packet tracer' in lname %}
+                <img src="{{ url_for('static', filename='images/software/cisco.svg') }}" alt="cisco" loading="lazy">
+              {% elif 'libreoffice' in lname or 'libre' in lname %}
+                <img src="{{ url_for('static', filename='images/software/libreoffice.svg') }}" alt="libreoffice" loading="lazy">
+              {% elif 'office' in lname and not 'libre' in lname %}
+                <img src="{{ url_for('static', filename='images/software/office.svg') }}" alt="office" loading="lazy">
+              {% elif 'virtualbox' in lname %}
+                <img src="{{ url_for('static', filename='images/software/virtualbox.svg') }}" alt="virtualbox" loading="lazy">
+              {% elif 'vmware' in lname %}
+                <img src="{{ url_for('static', filename='images/software/vmware.svg') }}" alt="vmware" loading="lazy">
+              {% elif 'dbeaver' in lname %}
+                <img src="{{ url_for('static', filename='images/software/dbeaver.svg') }}" alt="dbeaver" loading="lazy">
+              {% elif 'mysql' in lname or 'my sql' in lname %}
+                <img src="{{ url_for('static', filename='images/software/mysql.svg') }}" alt="mysql" loading="lazy">
+              {% elif 'xampp' in lname %}
+                <img src="{{ url_for('static', filename='images/software/xampp.svg') }}" alt="xampp" loading="lazy">
+              {% else %}
+                <img src="{{ url_for('static', filename='images/software/default.svg') }}" alt="software" loading="lazy">
+              {% endif %}
+            </div>
+            <div class="sw-card-body">
+              <div class="sw-card-name">{{ sw.name }}</div>
+              {% if sw.description %}
+              <div class="sw-card-desc">{{ sw.description }}</div>
+              {% endif %}
+            </div>
+          </div>
+          <div class="sw-card-footer">
+            <span class="sw-cat-tag">{{ sw.category }}</span>
+            {% if show_labs %}
+            <button class="sw-labs-tag" type="button" data-all-labs="{{ sw._labs_list|join(',') }}">Labs: {{ show_labs|join(', ') }}{% if extra_labs>0 %} (+{{ extra_labs }}){% endif %}</button>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% endif %}
+  </div>
+</div>
+
+<script>
+  let currentLab = '{{ labs[0] if labs else "all" }}';
+  let currentCategory = 'all';
+  let searchQuery = '';
+  // Modal elements
+  function createLabsModal() {
+    if (document.getElementById('labs-modal')) return;
+    const modal = document.createElement('div');
+    modal.id = 'labs-modal';
+    modal.className = 'labs-modal';
+    modal.innerHTML = `
+      <div class="labs-modal-backdrop" id="labs-modal-backdrop"></div>
+      <div class="labs-modal-panel" id="labs-modal-panel">
+        <button class="labs-modal-close" id="labs-modal-close">✕</button>
+        <h3 id="labs-modal-title">Labs</h3>
+        <div id="labs-modal-list" class="labs-modal-list"></div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    document.getElementById('labs-modal-close').addEventListener('click', closeLabsModal);
+    document.getElementById('labs-modal-backdrop').addEventListener('click', closeLabsModal);
+  }
+
+  function openLabsModal(name, labs) {
+    createLabsModal();
+    document.getElementById('labs-modal-title').textContent = name + ' — Available in';
+    const list = document.getElementById('labs-modal-list');
+    list.innerHTML = '';
+    labs.forEach(l => {
+      const btn = document.createElement('button');
+      btn.className = 'labs-chip';
+      btn.textContent = 'Lab ' + l;
+      btn.addEventListener('click', () => { closeLabsModal(); switchLab(l); });
+      list.appendChild(btn);
+    });
+    document.getElementById('labs-modal').style.display = 'block';
+  }
+
+  function closeLabsModal() {
+    const m = document.getElementById('labs-modal');
+    if (m) m.style.display = 'none';
+  }
+
+  function switchLab(lab) {
+    currentLab = lab;
+    // Update tab active state
+    document.querySelectorAll('.sw-lab-tab').forEach(t => t.classList.remove('active'));
+    const activeTab = document.getElementById('tab-' + lab);
+    if (activeTab) activeTab.classList.add('active');
+    // Filter cards in the consolidated list
+    filterSoftware();
+  }
+
+  function filterCategory(cat) {
+    currentCategory = cat;
+    document.querySelectorAll('.sw-pill').forEach(p => p.classList.remove('active'));
+    const activeP = document.querySelector(`.sw-pill[data-cat="${cat}"]`);
+    if (activeP) activeP.classList.add('active');
+    filterSoftware();
+  }
+
+  function filterSoftware() {
+    searchQuery = (document.getElementById('sw-search').value || '').toLowerCase().trim();
+    const container = document.getElementById('cards-all');
+    if (!container) return;
+    const cards = container.querySelectorAll('.sw-card');
+    let visible = 0;
+    cards.forEach(card => {
+      const name = card.dataset.name || '';
+      const cat = card.dataset.category || '';
+      const desc = card.dataset.desc || '';
+      const catMatch = currentCategory === 'all' || cat === currentCategory;
+      const searchMatch = !searchQuery || name.includes(searchQuery) || cat.toLowerCase().includes(searchQuery) || desc.includes(searchQuery);
+      // lab filter: if currentLab=='all' then pass, otherwise card's data-labs must include currentLab
+      const labs = (card.dataset.labs || '').split(',').map(s=>s.trim()).filter(Boolean);
+      const labMatch = (currentLab === 'all') || labs.includes(currentLab);
+      const show = catMatch && searchMatch && labMatch;
+      card.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+    // Update count for lab tabs
+    const countEl = document.getElementById('sw-visible-count');
+    if (countEl) countEl.textContent = visible + ' software';
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    switchLab(currentLab);
+    // Delegate clicks on labs-tag buttons
+    document.body.addEventListener('click', function(e) {
+      const el = e.target.closest && e.target.closest('.sw-labs-tag');
+      if (el) {
+        const labs = (el.getAttribute('data-all-labs') || '').split(',').map(s => s.trim()).filter(Boolean);
+        const card = el.closest('.sw-card');
+        const title = card ? (card.querySelector('.sw-card-name') || {}).textContent || 'Software' : 'Software';
+        openLabsModal(title, labs);
+      }
+      const labChip = e.target.closest && e.target.closest('.labs-chip');
+      if (labChip) {
+        // handled by modal button; normal click will switchLab via listener
+      }
+    });
+  });
+</script>
+
+<style>
+  .sw-wrap {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1.2rem 3rem;
+  }
+  .sw-page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .sw-page-title {
+    font-size: 1.9rem;
+    font-weight: 800;
+    color: #19335c;
+    margin: 0 0 .3rem;
+  }
+  .sw-page-sub {
+    margin: 0;
+    color: #6a7890;
+    font-size: .92rem;
+  }
+  .sw-lab-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .45rem;
+  }
+  .sw-lab-tab {
+    padding: .5rem 1rem;
+    border-radius: 999px;
+    border: 1.5px solid #d8e1ec;
+    background: #fff;
+    color: #4b6080;
+    font-size: .83rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .18s ease;
+  }
+  .sw-lab-tab:hover {
+    border-color: #365f9a;
+    color: #365f9a;
+    background: #edf4ff;
+  }
+  .sw-lab-tab.active {
+    background: linear-gradient(135deg, #19335c, #365f9a);
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 4px 14px rgba(25, 51, 92, .22);
+  }
+
+  /* Filter Bar */
+  .sw-filter-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .sw-filter-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+  }
+  .sw-pill {
+    padding: .38rem .85rem;
+    border-radius: 999px;
+    border: 1.5px solid #d8e1ec;
+    background: #fff;
+    color: #5a6e87;
+    font-size: .8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s ease;
+  }
+  .sw-pill:hover { border-color: #a0b3cc; }
+  .sw-pill.active {
+    background: #edf4ff;
+    border-color: #365f9a;
+    color: #19335c;
+  }
+  .sw-search-wrap {
+    position: relative;
+    flex-shrink: 0;
+  }
+  .sw-search-icon {
+    position: absolute;
+    left: .75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    color: #9aabbd;
+    pointer-events: none;
+  }
+  .sw-search {
+    padding: .55rem .9rem .55rem 2.2rem;
+    border: 1.5px solid #d8e1ec;
+    border-radius: 10px;
+    font-size: .88rem;
+    width: 220px;
+    outline: none;
+    transition: border .18s, box-shadow .18s;
+    font-family: inherit;
+  }
+  .sw-search:focus {
+    border-color: #365f9a;
+    box-shadow: 0 0 0 3px rgba(54, 95, 154, .11);
+  }
+
+  /* Lab Section */
+  .sw-lab-header {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    margin-bottom: 1rem;
+  }
+  .sw-lab-badge {
+    padding: .4rem .9rem;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #19335c, #365f9a);
+    color: #fff;
+    font-size: .82rem;
+    font-weight: 700;
+  }
+  .sw-lab-count {
+    color: #7b8fa8;
+    font-size: .84rem;
+  }
+
+  /* Cards */
+  .sw-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: .75rem;
+    margin-bottom: 1.5rem;
+  }
+  .sw-card {
+    background: #fff;
+    border: 1px solid rgba(30,37,53,0.06);
+    border-radius: 12px;
+    padding: .9rem .9rem .75rem;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    transition: box-shadow .18s ease, border-color .18s ease, transform .12s ease;
+    cursor: default;
+  }
+  .sw-card:hover {
+    border-color: rgba(30,37,53,0.12);
+    box-shadow: 0 6px 18px rgba(25, 51, 92, .06);
+    transform: translateY(-1px);
+  }
+  .sw-card-top { display:flex; align-items:flex-start; }
+  .sw-card-icon { width:56px; height:56px; display:flex; align-items:center; justify-content:center; border-radius:10px; background:#f6f8fb; margin-bottom:.1rem; flex-shrink:0; }
+  .sw-card-icon img { width:40px; height:40px; display:block; }
+  .sw-card-body {
+    flex: 1;
+  }
+  .sw-card-name {
+    font-size: .92rem;
+    font-weight: 700;
+    color: #19335c;
+    margin-bottom: .15rem;
+    line-height: 1.25;
+  }
+  .sw-card-desc {
+    font-size: .78rem;
+    color: #7b8fa8;
+    line-height: 1.45;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .sw-card-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .45rem;
+    align-items: center;
+    margin-top: .15rem;
+  }
+  .sw-cat-tag {
+    padding: .22rem .6rem;
+    border-radius: 999px;
+    background: #f3f7ff;
+    color: #2d5a9e;
+    font-size: .72rem;
+    font-weight: 700;
+  }
+  .sw-labs-tag {
+    padding: .22rem .6rem;
+    border-radius: 999px;
+    background: #f6faf6;
+    color: #2e7d44;
+    font-size: .72rem;
+    font-weight: 600;
+  }
+
+  /* Labs modal */
+  .labs-modal { display:none; position:fixed; inset:0; z-index:1200; }
+  .labs-modal-backdrop { position:absolute; inset:0; background:rgba(11,22,40,0.45); }
+  .labs-modal-panel { position:relative; width:420px; max-width:92%; margin:6% auto; background:var(--surface); border-radius:12px; padding:1rem 1rem 1.2rem; box-shadow:0 18px 50px rgba(17,24,39,0.5); z-index:1201; }
+  .labs-modal-close { position:absolute; right:10px; top:8px; border:none; background:transparent; font-size:1rem; cursor:pointer; color:var(--text-2); }
+  .labs-modal-list { display:flex; flex-wrap:wrap; gap:.45rem; margin-top:.6rem; }
+  .labs-chip { padding:.35rem .7rem; border-radius:999px; border:1px solid rgba(30,37,53,0.06); background:#fff; cursor:pointer; }
+
+  /* Empty / No items */
+  .sw-empty {
+    text-align: center;
+    padding: 4rem 2rem;
+  }
+  .sw-empty-icon { font-size: 3.5rem; margin-bottom: 1rem; }
+  .sw-empty p { font-size: 1.1rem; color: #34495e; margin-bottom: .4rem; }
+  .sw-empty span { font-size: .88rem; color: #8397ae; }
+  .sw-no-items {
+    color: #8a9ab5;
+    font-size: .88rem;
+    padding: 1.5rem 0;
+    margin-bottom: 2rem;
+  }
+
+  @media (max-width: 768px) {
+    .sw-page-header { flex-direction: column; }
+    .sw-filter-bar { flex-direction: column; align-items: flex-start; }
+    .sw-search { width: 100%; }
+    .sw-search-wrap { width: 100%; }
+    .sw-cards { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  }
+
+  @media (min-width: 1400px) {
+    .sw-cards { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+  }
+
+  /* DARK MODE */
+  :root[data-theme="dark"] .sw-page-title { color: #f8fafc; }
+  :root[data-theme="dark"] .sw-page-sub { color: #9aa5b8; }
+  :root[data-theme="dark"] .sw-lab-tab { background: #1a2436; border-color: #2b394f; color: #a1adc2; }
+  :root[data-theme="dark"] .sw-lab-tab:hover { border-color: #5c85c4; color: #8eb3ed; background: #1e2a40; }
+  :root[data-theme="dark"] .sw-lab-tab.active { background: linear-gradient(135deg, #1d3354, #3a629b); color: #fff; box-shadow: 0 4px 14px rgba(0,0,0,.4); }
+  
+  :root[data-theme="dark"] .sw-pill { background: #1a2436; border-color: #2b394f; color: #9aa5b8; }
+  :root[data-theme="dark"] .sw-pill:hover { border-color: #4f6687; }
+  :root[data-theme="dark"] .sw-pill.active { background: #1e2a40; border-color: #5c85c4; color: #e5e7eb; }
+  :root[data-theme="dark"] .sw-search { background: #1a2436; border-color: #2b394f; color: #e5e7eb; }
+  :root[data-theme="dark"] .sw-search:focus { border-color: #5c85c4; box-shadow: 0 0 0 3px rgba(92,133,196,.15); }
+  
+  :root[data-theme="dark"] .sw-lab-badge { background: linear-gradient(135deg, #1d3354, #3a629b); color: #fff; }
+  :root[data-theme="dark"] .sw-lab-count { color: #8a9ab0; }
+  
+  :root[data-theme="dark"] .sw-card { background: #1a2436; border-color: #2b394f; }
+  :root[data-theme="dark"] .sw-card:hover { border-color: #4f74ab; box-shadow: 0 8px 28px rgba(0,0,0,.3); }
+  :root[data-theme="dark"] .sw-card-name { color: #e5e7eb; }
+  :root[data-theme="dark"] .sw-card-desc { color: #9aa5b8; }
+
+  /* Ensure card icons and modal chips are visible in dark mode */
+  :root[data-theme="dark"] .sw-card-icon { background: rgba(255,255,255,0.03); }
+  :root[data-theme="dark"] .sw-card-icon img { filter: none; }
+  :root[data-theme="dark"] .labs-chip { background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.04); color: var(--text); }
+  :root[data-theme="dark"] .labs-modal-panel { background: var(--surface); }
+  
+  :root[data-theme="dark"] .sw-cat-tag { background: #233147; color: #8eb3ed; }
+  :root[data-theme="dark"] .sw-labs-tag { background: #192b1f; color: #6db984; }
+  
+  :root[data-theme="dark"] .sw-empty p { color: #e5e7eb; }
+  :root[data-theme="dark"] .sw-empty span { color: #8a9ab0; }
+  :root[data-theme="dark"] .sw-no-items { color: #8a9ab0; }
+</style>
+{% endblock %}

@@ -1,0 +1,14 @@
+<div class="theme-standalone-wrap">
+  <button class="theme-toggle theme-standalone-toggle" type="button" data-theme-toggle aria-label="Switch color theme">
+    <span class="theme-toggle-track" aria-hidden="true">
+      <span class="theme-toggle-thumb">
+        <img class="theme-toggle-img" data-theme-icon
+             src="{{ url_for('static', filename='images/theme-sun.png') }}"
+             data-light-src="{{ url_for('static', filename='images/theme-sun.png') }}"
+             data-dark-src="{{ url_for('static', filename='images/theme-moon.png') }}"
+             alt=""/>
+      </span>
+    </span>
+    <span class="theme-toggle-text">Light</span>
+  </button>
+</div>

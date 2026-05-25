@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% block title %}Sign Up - CCS Monitoring{% endblock %}
+{% block content %}
+<style>
+body {
+  background-image: url('/static/images/login-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+:root[data-theme="dark"] body {
+  background-image: url('/static/images/login-bg.jpg') !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
+}
+.register-main {
+  background: none !important;
+}
+.register-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .7rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #19335c !important;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 10px 24px rgba(25, 51, 92, 0.16);
+  border: 1px solid rgba(25, 51, 92, 0.08);
+  backdrop-filter: blur(6px);
+}
+.register-back-link:hover {
+  background: #ffffff;
+  color: #19335c !important;
+  transform: translateY(-1px);
+}
+</style>
+<div class="register-main">
+  <div style="width:100%;max-width:480px;">
+    <a href="{{ url_for('login') }}" class="back-link register-back-link">Back to Login</a>
+    <div class="reg-card">
+      <div class="reg-header">
+        <h1>Create Account</h1>
+        <p>Fill in your details to register</p>
+      </div>
+      <form method="post" action="{{ url_for('register') }}">
+        <div class="field-grid">
+          <div class="field field-full">
+            <input type="text" name="id_number" id="id_number" value="{{ data.get('id_number','') }}" placeholder=" " required/>
+            <label for="id_number">ID Number</label>
+          </div>
+          <div class="field">
+            <input type="text" name="last_name" id="last_name" value="{{ data.get('last_name','') }}" placeholder=" " required/>
+            <label for="last_name">Last Name</label>
+          </div>
+          <div class="field">
+            <input type="text" name="first_name" id="first_name" value="{{ data.get('first_name','') }}" placeholder=" " required/>
+            <label for="first_name">First Name</label>
+          </div>
+          <div class="field field-full">
+            <input type="text" name="middle_name" id="middle_name" value="{{ data.get('middle_name','') }}" placeholder=" "/>
+            <label for="middle_name">Middle Name (optional)</label>
+          </div>
+          <div class="field">
+            <div class="select-wrap">
+              <select name="course" id="course" required>
+                <option value="" disabled selected></option>
+              </select>
+            </div>
+            <label for="course">Course</label>
+          </div>
+          <div class="field">
+            <div class="select-wrap">
+              <select name="course_level" id="course_level" required>
+                <option value="" disabled selected></option>
+                {% for year in ['1', '2', '3', '4'] %}
+                <option value="{{ year }}" {% if data.get('course_level','1') == year %}selected{% endif %}>Year {{ year }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <label for="course_level">Year Level</label>
+          </div>
+          <div class="field field-full">
+            <input type="email" name="email" id="email" value="{{ data.get('email','') }}" placeholder=" "/>
+            <label for="email">Email Address</label>
+          </div>
+          <div class="field field-full">
+            <input type="text" name="address" id="address" value="{{ data.get('address','') }}" placeholder=" "/>
+            <label for="address">Address</label>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="field-grid">
+          <div class="field">
+            <input type="password" name="password" id="password" placeholder=" " required/>
+            <label for="password">Password</label>
+            <button type="button" onclick="togglePw('password', this)" class="show-pw-btn">Show</button>
+          </div>
+          <div class="field">
+            <input type="password" name="repeat_password" id="repeat_password" placeholder=" " required/>
+            <label for="repeat_password">Confirm Password</label>
+            <button type="button" onclick="togglePw('repeat_password', this)" class="show-pw-btn">Show</button>
+          </div>
+        </div>
+        <button type="submit" class="btn-register">Create Account</button>
+      </form>
+      <p class="reg-footer">Already have an account? <a href="{{ url_for('login') }}">Sign in</a></p>
+    </div>
+  </div>
+</div>
+<script>
+  // Course groups data
+  const courseGroups = {
+    {% for department, dept_courses in course_groups.items() %}
+      "{{ department }}": {{ dept_courses | tojson }},
+    {% endfor %}
+  };
+
+  const courseSelect = document.getElementById('course');
+  let currentStep = 'department'; // 'department' or 'course'
+
+  function updateFieldStatus(sel) {
+    const hasValue = !!sel.value && sel.value !== 'back';
+    sel.closest('.field').classList.toggle('has-value', hasValue);
+  }
+
+  // Populate initial departments
+  function showDepartments() {
+    courseSelect.innerHTML = '<option value="" disabled selected>Select a Department</option>';
+    Object.keys(courseGroups).forEach(dept => {
+      const option = document.createElement('option');
+      option.value = 'dept_' + dept;
+      option.textContent = dept;
+      courseSelect.appendChild(option);
+    });
+    currentStep = 'department';
+    courseSelect.value = '';
+    updateFieldStatus(courseSelect);
+  }
+
+  // Show courses for selected department
+  function showCoursesForDept(dept) {
+    courseSelect.innerHTML = '<option value="" disabled selected>Select a Course</option>';
+    const backOption = document.createElement('option');
+    backOption.value = 'back';
+    backOption.textContent = '← Back to Departments';
+    courseSelect.appendChild(backOption);
+
+    courseGroups[dept].forEach(course => {
+      const option = document.createElement('option');
+      option.value = course;
+      option.textContent = course;
+      courseSelect.appendChild(option);
+    });
+    currentStep = 'course';
+    courseSelect.value = '';
+    updateFieldStatus(courseSelect);
+  }
+
+  // Handle selection changes
+  courseSelect.addEventListener('change', function() {
+    if (this.value === 'back') {
+      showDepartments();
+    } else if (this.value && this.value.startsWith('dept_')) {
+      const dept = this.value.substring(5);
+      showCoursesForDept(dept);
+      // Auto-focus to make dropdown visible with courses
+      this.focus();
+    } else if (this.value) {
+      updateFieldStatus(this);
+    }
+  });
+
+  function updateFieldStatus(sel) {
+    const hasValue = !!sel.value && sel.value !== 'back';
+    sel.closest('.field').classList.toggle('has-value', hasValue);
+  }
+
+  // Initialize departments on page load
+  showDepartments();
+
+  // Restore saved course value if form was resubmitted
+  const savedCourse = '{{ data.get("course", "") }}';
+  if (savedCourse) {
+    // Find which department this course belongs to
+    for (const [dept, courses] of Object.entries(courseGroups)) {
+      if (courses.includes(savedCourse)) {
+        showCoursesForDept(dept);
+        courseSelect.value = savedCourse;
+        updateFieldStatus(courseSelect);
+        break;
+      }
+    }
+  }
+
+  // Handle other selects for styling
+  document.querySelectorAll('select:not(#course)').forEach(sel => {
+    function check() {
+      sel.closest('.field').classList.toggle('has-value', !!sel.value && sel.value !== '');
+    }
+    sel.addEventListener('change', check);
+    check();
+  });
+
+  function togglePw(id, btn) {
+    const input = document.getElementById(id);
+    if (input.type === 'password') {
+      input.type = 'text';
+      btn.textContent = 'Hide';
+    } else {
+      input.type = 'password';
+      btn.textContent = 'Show';
+    }
+  }
+</script>
+{% endblock %}

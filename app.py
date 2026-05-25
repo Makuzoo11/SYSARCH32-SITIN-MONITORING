@@ -233,11 +233,18 @@ def log_reasoning(admin_id, student_id, sit_in_log_id, action, reasoning, conn):
 def leaderboard_entries(conn, limit=None):
     rows = [dict(r) for r in conn.execute('''
         SELECT u.id, u.id_number, u.first_name, u.last_name, u.course, u.course_level,
+<<<<<<< HEAD
                u.reward_points,
                COALESCE(SUM(
                    CASE
                        WHEN s.status='Done'
                             AND s.time_out IS NOT NULL
+=======
+               u.reward_points, u.sessions_remaining, u.admin_remarks,
+               COALESCE(SUM(
+                   CASE
+                       WHEN s.time_out IS NOT NULL
+>>>>>>> cdf8f87d7476b41ae0aedeeb2089048cd5889b1e
                             AND julianday(s.time_out) >= julianday(s.time_in)
                        THEN (julianday(s.time_out) - julianday(s.time_in)) * 24.0
                        ELSE 0
@@ -245,7 +252,11 @@ def leaderboard_entries(conn, limit=None):
                ), 0) AS total_hours
         FROM users u
         LEFT JOIN sit_in_logs s
+<<<<<<< HEAD
           ON s.user_id = u.id AND s.status='Done' AND COALESCE(s.source, 'admin') != 'login'
+=======
+          ON s.user_id = u.id AND s.status IN ('Done', 'Approved') AND COALESCE(s.source, 'admin') != 'login'
+>>>>>>> cdf8f87d7476b41ae0aedeeb2089048cd5889b1e
         WHERE u.is_admin = 0
         GROUP BY u.id
         ORDER BY u.last_name, u.first_name
@@ -254,6 +265,7 @@ def leaderboard_entries(conn, limit=None):
         return []
 
     for row in rows:
+<<<<<<< HEAD
         reward = row['reward_points'] or 0
         hours = row['total_hours'] or 0
         total_reward = reward * 0.60
@@ -264,6 +276,19 @@ def leaderboard_entries(conn, limit=None):
         row['leaderboard_score'] = round(total_reward + total_hours, 2)
 
     rows.sort(key=lambda item: (-item['leaderboard_score'], -(item['reward_points'] or 0), -(item['total_hours'] or 0), item['last_name'], item['first_name']))
+=======
+        bonus_sessions = (row['reward_points'] or 0) / 3.0
+        hours = row['total_hours'] or 0
+        score = (
+            (min(bonus_sessions, LEADERBOARD_BONUS_SESSION_CAP) / LEADERBOARD_BONUS_SESSION_CAP) * 50.0 +
+            (min(hours, LEADERBOARD_HOURS_CAP) / LEADERBOARD_HOURS_CAP) * 30.0
+        )
+        row['total_hours'] = round(hours, 2)
+        row['bonus_sessions'] = round(bonus_sessions, 2)
+        row['leaderboard_score'] = round(score, 2)
+
+    rows.sort(key=lambda item: (-item['leaderboard_score'], -(item['bonus_sessions'] or 0), -(item['total_hours'] or 0), item['last_name'], item['first_name']))
+>>>>>>> cdf8f87d7476b41ae0aedeeb2089048cd5889b1e
     for idx, row in enumerate(rows, start=1):
         row['rank'] = idx
 
@@ -777,6 +802,7 @@ def init_db():
 
 @app.route('/')
 def index():
+<<<<<<< HEAD
     if session.get('user_id'):
         return redirect(url_for('admin_dashboard') if session.get('is_admin') else url_for('dashboard'))
 
@@ -790,6 +816,9 @@ def index():
         user=user,
         logo=get_logo()
     )
+=======
+    return redirect(url_for('login'))
+>>>>>>> cdf8f87d7476b41ae0aedeeb2089048cd5889b1e
 
 @app.route('/login', methods=['GET','POST'])
 def login():
@@ -856,11 +885,23 @@ def logout():
                 ).fetchall()
                 active_ids = [row['id'] for row in active_rows]
                 if active_ids:
+<<<<<<< HEAD
+=======
+                    count = len(active_ids)
+                    conn.execute(
+                        "UPDATE users SET sessions_remaining = CASE WHEN sessions_remaining >= ? THEN sessions_remaining - ? ELSE 0 END WHERE id=?",
+                        (count, count, user_id)
+                    )
+>>>>>>> cdf8f87d7476b41ae0aedeeb2089048cd5889b1e
                     conn.execute(
                         f"UPDATE sit_in_logs SET status='Done', time_out=COALESCE(time_out, CURRENT_TIMESTAMP) WHERE id IN ({','.join(['?'] * len(active_ids))})",
                         (*active_ids,)
                     )
+<<<<<<< HEAD
                 conn.commit()
+=======
+                    conn.commit()
+>>>>>>> cdf8f87d7476b41ae0aedeeb2089048cd5889b1e
         finally:
             conn.close()
     session.clear()
@@ -2069,6 +2110,7 @@ def admin_report_csv():
     })
 
 @app.route('/leaderboard')
+<<<<<<< HEAD
 def leaderboard():
     conn = get_db()
     rankings = leaderboard_entries(conn)
@@ -2076,6 +2118,14 @@ def leaderboard():
     notifications = []
     if user and not session.get('is_admin'):
         notifications = dashboard_notifications(conn, session['user_id'], limit=4)
+=======
+@login_required
+def leaderboard():
+    conn = get_db()
+    rankings = leaderboard_entries(conn)
+    user = fetch_user(conn, session['user_id'])
+    notifications = dashboard_notifications(conn, session['user_id'], limit=4) if not session.get('is_admin') else []
+>>>>>>> cdf8f87d7476b41ae0aedeeb2089048cd5889b1e
     conn.close()
     return render_template('leaderboard.html', rankings=rankings, user=user, notifications=notifications, logo=get_logo())
 

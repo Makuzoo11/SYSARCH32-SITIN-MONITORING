@@ -6,7 +6,10 @@
     <div>
       <p class="leader-kicker">Student Leaderboard</p>
       <h1>Ranking Based on Performance</h1>
+<<<<<<< HEAD
       <p class="leader-summary">Score = reward * 0.60 + hours * 0.20</p>
+=======
+>>>>>>> cdf8f87d7476b41ae0aedeeb2089048cd5889b1e
     {% if user %}
     <div class="leader-note">
       <span>Your snapshot</span>
@@ -14,7 +17,10 @@
       <p>{{ user.reward_points }} points</p>
     </div>
     {% endif %}
+<<<<<<< HEAD
     </div>
+=======
+>>>>>>> cdf8f87d7476b41ae0aedeeb2089048cd5889b1e
   </section>
 
   <div class="leader-layout">
@@ -73,7 +79,11 @@
     .leader-hero, .leader-layout { grid-template-columns: 1fr; }
   }
 </style>
+<<<<<<< HEAD
 {% if session.get('user_id') and not session.get('is_admin') %}
+=======
+{% if not session.get('is_admin') %}
+>>>>>>> cdf8f87d7476b41ae0aedeeb2089048cd5889b1e
 {% include "student_floating_controls.html" %}
 {% endif %}
 {% endblock %}

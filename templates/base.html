@@ -19,32 +19,47 @@
 <body>
 
 <nav>
+<<<<<<< HEAD
   {% set home_endpoint = 'dashboard' if session.get('user_id') else 'index' %}
   <a class="nav-brand" href="{{ url_for(home_endpoint) }}">
+=======
+  <a class="nav-brand" href="{% if session.get('user_id') %}{{ url_for('dashboard') }}{% else %}{{ url_for('login') }}{% endif %}">
+>>>>>>> cdf8f87d7476b41ae0aedeeb2089048cd5889b1e
     <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo" style="width:36px;height:36px;object-fit:contain;flex-shrink:0;"/>
     <span>College of Computer Studies Sit-in Monitoring System</span>
   </a>
   <ul class="nav-links">
+<<<<<<< HEAD
     {% if session.get('user_id') %}
       <li><a href="{{ url_for('dashboard') }}" {% if request.endpoint == 'dashboard' %}class="active"{% endif %}>Home</a></li>
+=======
+    <li><a href="{% if session.get('user_id') %}{{ url_for('dashboard') }}{% else %}{{ url_for('login') }}{% endif %}" {% if request.endpoint == 'dashboard' %}class="active"{% endif %}>Home</a></li>
+    {% if session.get('user_id') %}
+>>>>>>> cdf8f87d7476b41ae0aedeeb2089048cd5889b1e
       <li><a href="{{ url_for('student_history') }}" {% if request.endpoint == 'student_history' %}class="active"{% endif %}>History</a></li>
       <li><a href="{{ url_for('student_reservation') }}" {% if request.endpoint == 'student_reservation' %}class="active"{% endif %}>Reservation</a></li>
       <li><a href="{{ url_for('leaderboard') }}" {% if request.endpoint == 'leaderboard' %}class="active"{% endif %}>Leaderboard</a></li>
       <li><a href="{{ url_for('student_software') }}" {% if request.endpoint == 'student_software' %}class="active"{% endif %}>Software</a></li>
       <li><a href="{{ url_for('logout') }}">Logout</a></li>
     {% else %}
+<<<<<<< HEAD
       <li><a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}class="active"{% endif %}>Home</a></li>
+=======
+>>>>>>> cdf8f87d7476b41ae0aedeeb2089048cd5889b1e
       <li><a href="{{ url_for('login') }}">Login</a></li>
       <li><a href="{{ url_for('register') }}">Register</a></li>
     {% endif %}
   </ul>
 </nav>
+<<<<<<< HEAD
 {% if hide_nav %}
 <style>
   nav { display: none !important; }
   main { padding-top: 0; }
 </style>
 {% endif %}
+=======
+>>>>>>> cdf8f87d7476b41ae0aedeeb2089048cd5889b1e
 
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
